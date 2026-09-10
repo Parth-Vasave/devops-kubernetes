@@ -14,4 +14,19 @@ spec:
     spec:
       containers:
         - name: log-output
-          image: parthvasave/log-output:1.0
+          image: parthvasave/log-output:1.1
+          ports:
+            - containerPort: 3000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-output
+spec:
+  selector:
+    app: log-output
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

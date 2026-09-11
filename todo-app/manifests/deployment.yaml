@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: parthvasave/todo-app:1.13
+          image: parthvasave/todo-app:2.2
           env:
             - name: PORT
               value: "3000"

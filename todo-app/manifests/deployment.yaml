@@ -14,12 +14,19 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: parthvasave/todo-app:1.1
+          image: parthvasave/todo-app:1.12
           env:
             - name: PORT
               value: "3000"
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - name: todo-data
+              mountPath: /app/files
+      volumes:
+        - name: todo-data
+          persistentVolumeClaim:
+            claimName: todo-pvc
 
 ---
 apiVersion: v1

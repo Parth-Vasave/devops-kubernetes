@@ -14,14 +14,14 @@ spec:
     spec:
       containers:
         - name: generator
-          image: parthvasave/log-output:1.10
+          image: parthvasave/log-output:1.11
           command: ["node", "generator.js"]
           volumeMounts:
             - name: shared-data
               mountPath: /shared-data
 
         - name: log-output
-          image: parthvasave/log-output:1.10
+          image: parthvasave/log-output:1.11
           ports:
             - containerPort: 3000
           volumeMounts:
@@ -30,7 +30,8 @@ spec:
 
       volumes:
         - name: shared-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: shared-pvc
 
 ---
 apiVersion: v1

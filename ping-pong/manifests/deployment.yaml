@@ -14,19 +14,12 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: parthvasave/ping-pong:1.11
+          image: parthvasave/ping-pong:2.1
           env:
             - name: PORT
               value: "3000"
           ports:
             - containerPort: 3000
-          volumeMounts:
-            - name: shared-data
-              mountPath: /shared-data
-      volumes:
-        - name: shared-data
-          persistentVolumeClaim:
-            claimName: shared-pvc
 ---
 apiVersion: v1
 kind: Service

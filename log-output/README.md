@@ -1,15 +1,15 @@
 # Log Output
 
-Exercise 1.11 – DevOps with Kubernetes.
+Exercise 2.1 – DevOps with Kubernetes.
 
 ## Description
 
 The Log Output application is split into two containers running in the same Kubernetes Pod.
 
-- **Generator container:** generates a random string on startup and writes the current timestamp and random string to `/shared-data/log.txt` every 5 seconds.
-- **Log Output container:** reads the shared log file and the `pingpong.txt` counter file (from the Ping-Pong app), and serves them through the HTTP GET endpoint `/`.
+- **Generator container:** generates a random string on startup and writes the current timestamp and random string to `/shared-data/log.txt` every 5 seconds (shared via an `emptyDir` volume within the pod).
+- **Log Output container:** on every `GET /`, reads the latest log line and fetches the current ping count from the Ping-Pong service via `GET http://ping-pong:3000/pings`.
 
-Both containers use a shared `PersistentVolumeClaim` (which is also shared with the external Ping-Pong application).
+The two pods communicate over HTTP inside the cluster — no shared volume between them.
 
 ## Run Locally
 

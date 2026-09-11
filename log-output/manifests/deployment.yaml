@@ -13,10 +13,24 @@ spec:
         app: log-output
     spec:
       containers:
+        - name: generator
+          image: parthvasave/log-output:1.10
+          command: ["node", "generator.js"]
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared-data
+
         - name: log-output
-          image: parthvasave/log-output:1.1
+          image: parthvasave/log-output:1.10
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared-data
+
+      volumes:
+        - name: shared-data
+          emptyDir: {}
 
 ---
 apiVersion: v1

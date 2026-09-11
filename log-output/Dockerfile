@@ -6,7 +6,7 @@ COPY package*.json ./
 
 RUN npm install
 
-COPY index.js .
+COPY index.js generator.js ./
 
 EXPOSE 3000
 

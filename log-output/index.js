@@ -1,20 +1,18 @@
-const crypto = require("crypto");
+const fs = require("fs");
 const express = require("express");
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-
-const randomString = crypto.randomBytes(8).toString("hex");
-
-setInterval(() => {
-    const timestamp = new Date().toISOString();
-    console.log(`${timestamp} ${randomString}`);
-}, 5000);
+const filePath = "/shared-data/log.txt";
 
 app.get("/", (req, res) => {
-    const timestamp = new Date().toISOString();
-    res.send(`${timestamp} ${randomString}`);
+    try {
+        const content = fs.readFileSync(filePath, "utf8");
+        res.send(content);
+    } catch (error) {
+        res.status(500).send("Log file not available yet");
+    }
 });
 
 app.listen(PORT, () => {

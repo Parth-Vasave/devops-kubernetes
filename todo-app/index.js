@@ -52,6 +52,12 @@ const isImageFresh = () => {
   return Date.now() - stat.mtimeMs < CACHE_DURATION_MS;
 };
 
+const hardcodedTodos = [
+  "Learn Kubernetes basics",
+  "Deploy application to cluster",
+  "Configure persistent volumes",
+];
+
 app.get("/", async (req, res) => {
   // Ensure the files directory exists
   if (!fs.existsSync(IMAGE_DIR)) {
@@ -70,6 +76,10 @@ app.get("/", async (req, res) => {
     console.log("Serving cached image");
   }
 
+  const todoItems = hardcodedTodos
+    .map((todo) => `<li class="todo-item">${todo}</li>`)
+    .join("\n");
+
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -78,28 +88,118 @@ app.get("/", async (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Todo App</title>
         <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem;
-            background: #f5f5f5;
+            padding: 2rem 1rem;
+            background: #fff;
+            color: #222;
           }
-          h1 { font-size: 2rem; margin-bottom: 1rem; }
+          h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+          }
           img {
-            max-width: 600px;
-            width: 100%;
+            width: 260px;
+            height: 260px;
+            object-fit: cover;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
           }
-          footer { margin-top: 1.5rem; color: #555; }
+          .input-row {
+            display: flex;
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 640px;
+            margin-bottom: 2rem;
+          }
+          #todo-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #4caf50;
+            border-radius: 4px;
+            outline: none;
+          }
+          #todo-input:focus {
+            border-color: #388e3c;
+          }
+          #send-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+          }
+          #send-btn:hover {
+            background: #388e3c;
+          }
+          #char-count {
+            font-size: 0.8rem;
+            color: #999;
+            align-self: flex-start;
+            margin-top: -1.5rem;
+            margin-bottom: 1.5rem;
+          }
+          #char-count.over { color: #e53935; }
+          h2 {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+          }
+          .todo-list {
+            list-style: none;
+            width: 100%;
+            max-width: 640px;
+          }
+          .todo-item {
+            padding: 1rem 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            border-left: 4px solid #4caf50;
+            background: #fafafa;
+            font-size: 1rem;
+          }
+          .todo-item:last-child {
+            border-bottom: none;
+          }
         </style>
       </head>
       <body>
         <h1>Todo App</h1>
         <img src="/image.jpg" alt="Daily picture" />
-        <footer>DevOps with Kubernetes 2026</footer>
+
+        <div class="input-row">
+          <input
+            id="todo-input"
+            type="text"
+            maxlength="140"
+            placeholder="Enter a new todo (max 140 characters)"
+          />
+          <button id="send-btn">Send</button>
+        </div>
+        <span id="char-count">0 / 140</span>
+
+        <h2>Todos</h2>
+        <ul class="todo-list">
+          ${todoItems}
+        </ul>
+
+        <script>
+          const input = document.getElementById('todo-input');
+          const counter = document.getElementById('char-count');
+          input.addEventListener('input', () => {
+            const len = input.value.length;
+            counter.textContent = len + ' / 140';
+            counter.className = len > 140 ? 'over' : '';
+          });
+        </script>
       </body>
     </html>
   `);

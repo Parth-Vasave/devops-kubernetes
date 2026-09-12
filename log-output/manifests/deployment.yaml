@@ -15,23 +15,34 @@ spec:
     spec:
       containers:
         - name: generator
-          image: parthvasave/log-output:2.1
+          image: parthvasave/log-output:2.5
           command: ["node", "generator.js"]
           volumeMounts:
             - name: shared-data
               mountPath: /shared-data
 
         - name: log-output
-          image: parthvasave/log-output:2.1
+          image: parthvasave/log-output:2.5
           ports:
             - containerPort: 3000
+          env:
+            - name: MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: log-output-config
+                  key: MESSAGE
           volumeMounts:
             - name: shared-data
               mountPath: /shared-data
+            - name: config-volume
+              mountPath: /etc/config
 
       volumes:
         - name: shared-data
           emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: log-output-config
 
 ---
 apiVersion: v1

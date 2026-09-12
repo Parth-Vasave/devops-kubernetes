@@ -6,6 +6,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 const logPath = "/shared-data/log.txt";
+const configPath = "/etc/config/information.txt";
 const PING_PONG_URL = "http://ping-pong:3000/pings";
 
 const fetchPings = () => {
@@ -30,11 +31,20 @@ app.get("/", async (req, res) => {
     const [timestamp, randomString] = lastLog.split(" ");
     const formattedLog = `${timestamp}: ${randomString}.`;
 
+    const fileContent = fs.readFileSync(configPath, "utf8").trim();
+    const message = process.env.MESSAGE;
+
     const pings = await fetchPings();
 
-    res.send(`${formattedLog}\nPing / Pongs: ${pings}\n`);
+    res.send(
+      `file content: ${fileContent}\n` +
+      `env variable: MESSAGE=${message}\n` +
+      `${formattedLog}\n` +
+      `Ping / Pongs: ${pings}\n`
+    );
   } catch (error) {
-    res.status(500).send("Log file not available yet");
+    console.error(error);
+    res.status(500).send("Required file or log file not available yet");
   }
 });
 

@@ -1,0 +1,30 @@
+# Adds KSOPS to the Argo CD repo server so kustomizations can decrypt SOPS-encrypted secrets:
+#   kubectl -n argocd patch deployment argocd-repo-server --patch-file argocd/ksops-patch.yaml
+spec:
+  template:
+    spec:
+      containers:
+        - name: argocd-repo-server
+          env:
+            - name: SOPS_AGE_KEY_FILE
+              value: /sops-age/keys.txt
+            # Makes the ksops binary from the mounted image available to kustomize
+            - name: PATH
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/ksops/usr/local/bin
+          volumeMounts:
+            # The ksops image has no shell to copy its binary with, so the whole image is mounted as a volume
+            - name: ksops
+              mountPath: /ksops
+              readOnly: true
+            - name: sops-age
+              mountPath: /sops-age
+              readOnly: true
+      volumes:
+        - name: ksops
+          image:
+            reference: viaductoss/ksops:v4.5.1
+            pullPolicy: IfNotPresent
+        # Created from the age private key: kubectl -n argocd create secret generic argocd-sops-age-key --from-file=keys.txt=<key file>
+        - name: sops-age
+          secret:
+            secretName: argocd-sops-age-key

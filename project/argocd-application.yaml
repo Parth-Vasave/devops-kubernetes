@@ -1,0 +1,20 @@
+# Argo CD keeps the project namespace in sync with project/gitops on the main branch
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: project
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Parth-Vasave/devops-kubernetes
+    targetRevision: main
+    path: project/gitops
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: project
+  syncPolicy:
+    # Apply every new commit automatically, delete resources removed from Git and undo manual changes in the cluster
+    automated:
+      prune: true
+      selfHeal: true

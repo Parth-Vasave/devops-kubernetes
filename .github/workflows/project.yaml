@@ -1,9 +1,11 @@
-name: Deploy project
+name: Deploy branch environment
 
+# main is deployed by Argo CD (see project-release.yaml); every other branch gets its own environment from this workflow
 on:
   push:
     branches:
       - "**"
+      - "!main"
 
 # Deploys of the same branch run one at a time so they cannot overwrite each other
 concurrency:
@@ -27,14 +29,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # main is deployed to the project namespace, every other branch to a namespace named after the branch
+      # Each branch is deployed to a namespace named after the branch
       - name: Choose namespace
         run: |
-          if [ "$GITHUB_REF_NAME" = "main" ]; then
-            echo "NAMESPACE=project" >> "$GITHUB_ENV"
-          else
-            echo "NAMESPACE=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          if [ "$GITHUB_REF_NAME" = "project" ]; then
+            echo "A branch named project would overwrite the environment Argo CD manages"
+            exit 1
           fi
+          echo "NAMESPACE=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
 
       # Workload Identity Federation: GitHub's OIDC token is exchanged for short-lived Google credentials
       - name: Authenticate to Google Cloud
@@ -74,21 +76,15 @@ jobs:
           sudo install -m 0755 "sops-$SOPS_VERSION.linux.amd64" /usr/local/bin/sops
 
       - name: Deploy
-        working-directory: project
+        working-directory: project/base
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
           # The decrypted secret only exists on the runner; adding it to the kustomization puts it in the target namespace
-          sops --decrypt ../todo-backend/manifests/secret.enc.yaml > secret.yaml
+          sops --decrypt ../../todo-backend/manifests/secret.enc.yaml > secret.yaml
           kustomize edit add resource secret.yaml
-          if [ "$NAMESPACE" = "project" ]; then
-            # Only the main environment posts to Discord; branch broadcasters just log the messages
-            sops --decrypt ../broadcaster/manifests/secret.enc.yaml > broadcaster-secret.yaml
-            kustomize edit add resource broadcaster-secret.yaml
-          else
-            # Only the main environment backs up its database to Cloud Storage
-            kustomize edit remove resource ../todo-backend/backup
-          fi
+          # Only the main environment backs up its database and posts to Discord; branch broadcasters just log the messages
+          kustomize edit remove resource ../../todo-backend/backup
           kustomize edit set namespace "$NAMESPACE"
           kustomize edit set image \
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \
@@ -96,9 +92,7 @@ jobs:
             "parthvasave/broadcaster=$REGISTRY/broadcaster:$GITHUB_SHA"
           kustomize build . | kubectl apply -f -
           # Branch environments are labeled so the delete workflow only removes namespaces this pipeline created
-          if [ "$NAMESPACE" != "project" ]; then
-            kubectl label namespace "$NAMESPACE" project-environment=branch --overwrite
-          fi
+          kubectl label namespace "$NAMESPACE" project-environment=branch --overwrite
           kubectl -n "$NAMESPACE" rollout status deployment/todo-backend --timeout=300s
           kubectl -n "$NAMESPACE" rollout status deployment/todo-app --timeout=300s
           kubectl -n "$NAMESPACE" rollout status deployment/nats --timeout=300s

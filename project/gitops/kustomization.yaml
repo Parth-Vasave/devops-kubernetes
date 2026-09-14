@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# The main branch as Argo CD deploys it (see ../argocd-application.yaml)
+resources:
+  - ../base
+# Decrypts the SOPS-encrypted secrets with KSOPS inside Argo CD
+generators:
+  - secret-generator.yaml
+# The release workflow sets the images built from the latest commit
+images:
+  - name: parthvasave/todo-app
+    newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-app
+    newTag: 1fc47207301eb673e382439159b97febb7ca72d3
+  - name: parthvasave/todo-backend
+    newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-backend
+    newTag: 1fc47207301eb673e382439159b97febb7ca72d3
+  - name: parthvasave/broadcaster
+    newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/broadcaster
+    newTag: 1fc47207301eb673e382439159b97febb7ca72d3

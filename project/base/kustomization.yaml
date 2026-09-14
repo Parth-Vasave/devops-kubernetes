@@ -3,10 +3,10 @@ kind: Kustomization
 namespace: project
 resources:
   - namespace.yaml
-  - ../todo-app/manifests
-  - ../todo-backend/manifests
-  - ../todo-backend/backup
-  - ../broadcaster/manifests
+  - ../../todo-app/manifests
+  - ../../todo-backend/manifests
+  - ../../todo-backend/backup
+  - ../../broadcaster/manifests
 images:
   - name: parthvasave/todo-app
     newTag: "3.5"

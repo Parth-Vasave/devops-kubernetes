@@ -1,15 +1,20 @@
 # Todo Project
 
-Kustomize entry point for the todo project (Exercise 3.5). It combines `todo-app/manifests` and `todo-backend/manifests`, puts everything in the `project` namespace, and sets the image tags.
+Kustomize entry point for the todo project (Exercise 3.5).
+
+- `base/` combines the manifests of todo-app, todo-backend (with the database backup) and broadcaster and puts everything in the `project` namespace.
+- `gitops/` is the main branch as Argo CD deploys it (Exercise 4.8): the base, the SOPS-encrypted secrets decrypted with KSOPS, and the image tags of the latest release.
 
 ## Deploy
 
+The main branch is deployed by Argo CD (see [GitOps](#gitops-exercise-48)). A manual deploy of the base still works:
+
 ```bash
-kubectl apply -k project
+kubectl apply -k project/base
 sops --decrypt todo-backend/manifests/secret.enc.yaml | kubectl apply -f -
 ```
 
-The database secret is encrypted with SOPS, so it is applied separately. Point SOPS at the age key with `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`.
+The base does not contain the secrets, so the database secret is applied separately. Point SOPS at the age key with `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`.
 
 On Google Kubernetes Engine the app is exposed through a Gateway:
 
@@ -84,7 +89,7 @@ Prices are approximate list prices and differ by region; check the Google Cloud 
 **Pros**
 
 - Cheap: the database uses capacity on nodes that are already running, and the only extra cost is a small persistent disk per environment.
-- Quick and simple to start: `kubectl apply -k project` creates the database together with the app, and the same manifests work locally and on GKE.
+- Quick and simple to start: `kubectl apply -k project/base` creates the database together with the app, and the same manifests work locally and on GKE.
 - Every branch environment gets its own isolated database automatically, and it is removed with the namespace when the branch is deleted.
 - Full control over the PostgreSQL version, configuration and extensions, and no vendor lock-in.
 

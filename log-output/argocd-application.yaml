@@ -1,0 +1,20 @@
+# Argo CD keeps the exercises namespace in sync with log-output/manifests on the main branch
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: log-output
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Parth-Vasave/devops-kubernetes
+    targetRevision: main
+    path: log-output/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: exercises
+  syncPolicy:
+    # Apply every new commit automatically, delete resources removed from Git and undo manual changes in the cluster
+    automated:
+      prune: true
+      selfHeal: true

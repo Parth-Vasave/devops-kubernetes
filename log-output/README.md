@@ -27,7 +27,7 @@ Ping-pong also handles errors from idle database connections. Before this fix, r
 Apply everything except the database StatefulSet (since Exercise 4.4 Ping-pong is an Argo Rollouts `Rollout`, see `ping-pong/README.md`):
 
 ```bash
-kubectl apply -f kubernetes/namespace.yaml -f kubernetes/log-output-configmap.yaml
+kubectl apply -f kubernetes/namespace.yaml -f log-output/manifests/configmap.yaml
 sops --decrypt ping-pong/manifests/secret.enc.yaml | kubectl apply -f -
 kubectl apply -f log-output/manifests/ -f ping-pong/manifests/rollout.yaml -f ping-pong/manifests/analysistemplate.yaml -f ping-pong/manifests/healthcheck.yaml
 ```

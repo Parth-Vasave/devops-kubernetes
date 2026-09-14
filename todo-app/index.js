@@ -149,17 +149,21 @@ const fetchTodos = () => {
   });
 };
 
-const postTodo = (content) => {
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
+
+// Sends a JSON request to todo-backend and resolves with its status code and response body
+const sendToBackend = (method, path, payload) => {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ content });
+    const body = JSON.stringify(payload);
     const options = {
-      method: "POST",
+      method,
       headers: {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(body),
       },
     };
-    const req = http.request(`${TODO_BACKEND_URL}/todos`, options, (res) => {
+    const req = http.request(`${TODO_BACKEND_URL}${path}`, options, (res) => {
       let data = "";
       res.on("data", (chunk) => { data += chunk; });
       res.on("end", () => resolve({ status: res.statusCode, body: data }));
@@ -175,12 +179,26 @@ app.post("/todos", async (req, res) => {
   const content = (req.body && req.body.content) ? req.body.content.trim() : "";
   if (content) {
     try {
-      await postTodo(content);
+      await sendToBackend("POST", "/todos", { content });
     } catch (err) {
       console.error("Failed to post todo:", err.message);
     }
   }
   res.redirect("/");
+});
+
+// PUT /todos/:id — forward the update (e.g. { "done": true }) to todo-backend
+app.put("/todos/:id", async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: "Todo id must be a positive integer" });
+  }
+  try {
+    const result = await sendToBackend("PUT", `/todos/${req.params.id}`, { done: req.body?.done });
+    res.status(result.status).type("application/json").send(result.body);
+  } catch (err) {
+    console.error("Failed to update todo:", err.message);
+    res.status(502).json({ error: "Todo backend unavailable" });
+  }
 });
 
 // POST /break — make the app unhealthy on purpose
@@ -206,7 +224,15 @@ app.get("/", async (req, res) => {
 
   const todos = await fetchTodos();
   const todoItems = todos
-    .map((t) => `<li class="todo-item">${t.content}</li>`)
+    .map((t) => t.done
+      ? `<li class="todo-item done">
+          <span class="todo-content">${escapeHtml(t.content)}</span>
+          <span class="done-label">Done</span>
+        </li>`
+      : `<li class="todo-item">
+          <span class="todo-content">${escapeHtml(t.content)}</span>
+          <button class="done-btn" type="button" data-id="${t.id}">Mark done</button>
+        </li>`)
     .join("\n");
 
   res.send(`
@@ -272,6 +298,10 @@ app.get("/", async (req, res) => {
           h2 { font-size: 1.4rem; font-weight: bold; margin-bottom: 1rem; }
           .todo-list { list-style: none; width: 100%; max-width: 640px; }
           .todo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
             padding: 1rem;
             border-bottom: 1px solid #e0e0e0;
             border-left: 4px solid #4caf50;
@@ -279,6 +309,23 @@ app.get("/", async (req, res) => {
             font-size: 1rem;
           }
           .todo-item:last-child { border-bottom: none; }
+          .todo-content { overflow-wrap: anywhere; }
+          .todo-item.done { border-left-color: #9e9e9e; background: #f0f0f0; }
+          .todo-item.done .todo-content { color: #757575; text-decoration: line-through; }
+          .done-label { color: #2e7d32; font-weight: bold; white-space: nowrap; }
+          .done-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+          }
+          .done-btn:hover { background: #1565c0; }
+          .done-btn:disabled { background: #90a4ae; cursor: default; }
+          footer { margin-top: 2rem; color: #757575; }
           .break-form { margin-top: 2rem; }
           #break-btn {
             padding: 0.6rem 1.2rem;
@@ -318,6 +365,8 @@ app.get("/", async (req, res) => {
           <button id="break-btn" type="submit">break the app</button>
         </form>
 
+        <footer>DevOps with Kubernetes ${new Date().getFullYear()}</footer>
+
         <script>
           const input = document.getElementById('todo-input');
           const counter = document.getElementById('char-count');
@@ -325,6 +374,25 @@ app.get("/", async (req, res) => {
             const len = input.value.length;
             counter.textContent = len + ' / 140';
             counter.className = len > 140 ? 'over' : '';
+          });
+
+          // HTML forms cannot send PUT, so the Mark done buttons use fetch
+          document.querySelectorAll('.done-btn').forEach((button) => {
+            button.addEventListener('click', async () => {
+              button.disabled = true;
+              try {
+                const response = await fetch('/todos/' + button.dataset.id, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ done: true }),
+                });
+                if (!response.ok) throw new Error('status ' + response.status);
+                location.reload();
+              } catch (err) {
+                button.disabled = false;
+                alert('Could not mark the todo as done (' + err.message + ')');
+              }
+            });
           });
         </script>
       </body>

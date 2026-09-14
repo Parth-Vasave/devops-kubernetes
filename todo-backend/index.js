@@ -37,6 +37,10 @@ const initDb = async () => {
   await pool.query(
     "CREATE TABLE IF NOT EXISTS todos (id SERIAL PRIMARY KEY, content VARCHAR(140) NOT NULL)"
   );
+  // Databases created before Exercise 4.5 do not have the done column yet
+  await pool.query(
+    "ALTER TABLE todos ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false"
+  );
   dbInitialized = true;
 };
 
@@ -61,7 +65,7 @@ app.get("/readyz", async (req, res) => {
 
 // GET /todos - return all todos
 app.get("/todos", async (req, res) => {
-  const result = await pool.query("SELECT content FROM todos ORDER BY id");
+  const result = await pool.query("SELECT id, content, done FROM todos ORDER BY id");
   res.json(result.rows);
 });
 
@@ -80,11 +84,32 @@ app.post("/todos", async (req, res) => {
   }
 
   const result = await pool.query(
-    "INSERT INTO todos (content) VALUES ($1) RETURNING content",
+    "INSERT INTO todos (content) VALUES ($1) RETURNING id, content, done",
     [content]
   );
   console.log(`Created todo: ${content}`);
   res.status(201).json(result.rows[0]);
+});
+
+// PUT /todos/:id - update whether a todo is done
+app.put("/todos/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ error: "Todo id must be a positive integer" });
+  }
+  if (typeof req.body?.done !== "boolean") {
+    return res.status(400).json({ error: "done must be true or false" });
+  }
+
+  const result = await pool.query(
+    "UPDATE todos SET done = $1 WHERE id = $2 RETURNING id, content, done",
+    [req.body.done, id]
+  );
+  if (result.rowCount === 0) {
+    return res.status(404).json({ error: "Todo not found" });
+  }
+  console.log(`Marked todo ${id} as ${req.body.done ? "done" : "not done"}: ${result.rows[0].content}`);
+  res.json(result.rows[0]);
 });
 
 // The server starts right away so the probes can report the database state

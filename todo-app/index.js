@@ -13,6 +13,8 @@ const IMAGE_DIR = "/app/files";
 const IMAGE_PATH = path.join(IMAGE_DIR, "image.jpg");
 const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const TODO_BACKEND_URL = process.env.TODO_BACKEND_URL;
+// Set in non-production environments (e.g. "staging") to show a banner, so environments are not mixed up
+const ENVIRONMENT = process.env.ENVIRONMENT;
 
 // Set to false by the "break the app" button; the liveness probe then fails and Kubernetes restarts the container
 let isHealthy = true;
@@ -327,6 +329,17 @@ app.get("/", async (req, res) => {
           .done-btn:hover { background: #1565c0; }
           .done-btn:disabled { background: #90a4ae; cursor: default; }
           footer { margin-top: 2rem; color: #757575; }
+          .environment-banner {
+            width: 100%;
+            max-width: 640px;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            text-align: center;
+            color: #7a4f00;
+            background: #fff3cd;
+            border: 1px solid #ffe08a;
+            border-radius: 4px;
+          }
           .break-form { margin-top: 2rem; }
           #break-btn {
             padding: 0.6rem 1.2rem;
@@ -341,6 +354,7 @@ app.get("/", async (req, res) => {
         </style>
       </head>
       <body>
+        ${ENVIRONMENT ? `<div class="environment-banner">${escapeHtml(ENVIRONMENT)} environment</div>` : ""}
         <h1>Todo App</h1>
         <img src="/image.jpg" alt="Daily picture" />
 

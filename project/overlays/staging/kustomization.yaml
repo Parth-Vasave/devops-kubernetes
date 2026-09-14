@@ -10,6 +10,16 @@ generators:
 - secret-generator.yaml
   # Staging does not need production's 6 broadcaster replicas
 patches:
+  # Shows a "staging environment" banner in the todo app
+  - target:
+      kind: Deployment
+      name: todo-app
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: staging
 - patch: |
     - op: replace
       path: /spec/replicas

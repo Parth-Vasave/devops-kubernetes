@@ -35,6 +35,10 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-secret
+          env:
+            # Use a subdirectory so a fresh cloud disk's lost+found folder does not block initialization
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           readinessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
@@ -48,7 +52,6 @@ spec:
         name: postgres-data
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
         resources:
           requests:
             storage: 100Mi

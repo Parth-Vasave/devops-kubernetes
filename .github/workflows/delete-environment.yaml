@@ -1,0 +1,53 @@
+name: Delete environment
+
+on:
+  delete
+
+# Shares the deploy workflow's group so a running deploy of the branch finishes before its environment is removed
+concurrency:
+  group: deploy-${{ github.event.ref }}
+
+env:
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: asia-south1-a
+
+jobs:
+  delete-environment:
+    name: Delete branch environment
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/418821991749/locations/global/workloadIdentityPools/github/providers/github-repo
+          service_account: github-actions-deployer@devops-kubernetes-508609.iam.gserviceaccount.com
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_ZONE }}
+
+      # Deleting the namespace also removes the environment's Gateway load balancer and database disks
+      - name: Delete namespace
+        env:
+          NAMESPACE: ${{ github.event.ref }}
+        run: |
+          if [ "$NAMESPACE" = "project" ]; then
+            echo "Refusing to delete the project namespace"
+            exit 1
+          fi
+          if ! kubectl get namespace "$NAMESPACE" > /dev/null 2>&1; then
+            echo "Namespace $NAMESPACE does not exist, nothing to delete"
+            exit 0
+          fi
+          if [ "$(kubectl get namespace "$NAMESPACE" -o jsonpath='{.metadata.labels.project-environment}')" != "branch" ]; then
+            echo "Namespace $NAMESPACE was not created by the deploy workflow, refusing to delete it"
+            exit 1
+          fi
+          kubectl delete namespace "$NAMESPACE" --timeout=10m

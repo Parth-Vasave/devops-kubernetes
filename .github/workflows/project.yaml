@@ -85,6 +85,10 @@ jobs:
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \
             "parthvasave/todo-backend=$REGISTRY/todo-backend:$GITHUB_SHA"
           kustomize build . | kubectl apply -f -
+          # Branch environments are labeled so the delete workflow only removes namespaces this pipeline created
+          if [ "$NAMESPACE" != "project" ]; then
+            kubectl label namespace "$NAMESPACE" project-environment=branch --overwrite
+          fi
           kubectl -n "$NAMESPACE" rollout status deployment/todo-backend --timeout=300s
           kubectl -n "$NAMESPACE" rollout status deployment/todo-app --timeout=300s
           kubectl -n "$NAMESPACE" get gateway todo-gateway

@@ -1,0 +1,15 @@
+apiVersion: stable.dwk/v1
+kind: DummySite
+metadata:
+  name: example
+  namespace: default
+spec:
+  website_url: https://example.com/
+---
+apiVersion: stable.dwk/v1
+kind: DummySite
+metadata:
+  name: kubernetes-wikipedia
+  namespace: default
+spec:
+  website_url: https://en.wikipedia.org/wiki/Kubernetes

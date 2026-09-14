@@ -96,3 +96,7 @@
 - [4.9.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.9/project)
 
 - [4.10.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.10/project)
+
+### Chapter 6
+
+- [5.1.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.1/dummysite)

@@ -1,0 +1,11 @@
+{
+  "name": "dummysite-controller",
+  "version": "1.0.0",
+  "description": "Controller for DummySite resources – DevOps with Kubernetes Exercise 5.1.",
+  "main": "index.js",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "@kubernetes/client-node": "^2.0.0"
+  }
+}

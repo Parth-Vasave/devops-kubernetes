@@ -102,6 +102,11 @@ app.post("/todos", async (req, res) => {
   res.redirect("/");
 });
 
+// Load balancer health checks use this path so they do not download images or query the backend
+app.get("/healthz", (req, res) => {
+  res.send("ok");
+});
+
 app.get("/", async (req, res) => {
   if (!fs.existsSync(IMAGE_DIR)) {
     fs.mkdirSync(IMAGE_DIR, { recursive: true });

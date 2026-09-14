@@ -4,7 +4,6 @@ metadata:
   name: todo-pvc
   namespace: project
 spec:
-  storageClassName: manual-todo
   accessModes:
     - ReadWriteOnce
   resources:

@@ -52,7 +52,8 @@ app.get("/", async (req, res) => {
 
     const pings = await fetchPings();
 
-    res.send(
+    // Plain text keeps the line breaks when the page is opened in a browser
+    res.type("text/plain").send(
       `file content: ${fileContent}\n` +
       `env variable: MESSAGE=${message}\n` +
       `${formattedLog}\n` +

@@ -110,3 +110,20 @@ Prices are approximate list prices and differ by region; check the Google Cloud 
 ### Conclusion
 
 For this course project, DIY is the better fit. It costs almost nothing on top of the cluster, works the same locally and on GKE, and makes per-branch environments trivial. For a production service with data that matters, DBaaS is usually worth its price, because backups, point-in-time recovery, patching and high availability come ready-made instead of having to be built and maintained by hand.
+
+## Resource requests and limits (Exercise 3.11)
+
+Values are based on `kubectl top pods -n project --containers`, measured at idle and during a load test of 6000 page loads with 40 concurrent requests (about 240 requests per second through the Gateway):
+
+| Container | Idle CPU / memory | Peak under load | Requests | Limits |
+| --- | --- | --- | --- | --- |
+| todo-app | 2m / 16Mi | 470m / 65Mi | 10m / 32Mi | 500m / 128Mi |
+| todo-backend | 1m / 14Mi | 292m / 53Mi | 10m / 32Mi | 300m / 128Mi |
+| postgres | 11m / 26Mi | 62m / 42Mi | 25m / 64Mi | 500m / 256Mi |
+| random-wiki-todo (CronJob) | short-lived | | 5m / 8Mi | 100m / 32Mi |
+| todo-backup `dump` (CronJob) | short-lived | | 10m / 32Mi | 500m / 128Mi |
+| todo-backup `upload` (CronJob) | short-lived | | 50m / 128Mi | 500m / 256Mi |
+
+Requests are kept close to idle usage because the e2-medium nodes already have most of their allocatable CPU requested by GKE system pods, and every branch environment needs room for its own copy of the project. Memory limits are about twice the observed peak, so a memory leak is stopped with an OOM kill instead of starving the node. CPU limits sit at the observed peaks, so heavy load is throttled instead of taking CPU from other workloads.
+
+With the limits in place the same load test completed with no restarts or OOM kills (p50 response 0.10 s, p95 0.40 s), and both CronJobs ran successfully.

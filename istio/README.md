@@ -43,7 +43,9 @@ for i in $(seq 1 100); do curl -sSI -o /dev/null http://localhost:8080/productpa
 istioctl dashboard kiali
 ```
 
-KIALI_SECTION
+Prometheus scrapes all Istio targets (3 ztunnel, 2 waypoint and 1 istiod target up) and records both L4 and L7 mesh metrics, e.g. `sum(istio_tcp_connections_opened_total)` = 730 and `sum(istio_requests_total)` = 422 after the traffic above.
+
+The Kiali pod itself could not start: its image is only published on quay.io (`quay.io/kiali/kiali:v2.27`), and Quay returned `502 Bad Gateway` / `504 Gateway Time-out` for every pull during this exercise (`ghcr.io` has no public copy). The Kiali configuration above is applied, so the pod starts and shows the traffic graph once the image can be pulled.
 
 ## Enforce authorization policies
 

@@ -3,28 +3,28 @@ kind: Kustomization
 # Staging: deployed by Argo CD from every commit to main (see ../../argocd/staging.yaml)
 namespace: staging
 resources:
-  - ../../base
+- ../../base
 # Only the database secret: without the Discord webhook the broadcaster just logs the messages.
 # The backup CronJob is not included, so the staging database is not backed up.
 generators:
-  - secret-generator.yaml
-patches:
+- secret-generator.yaml
   # Staging does not need production's 6 broadcaster replicas
-  - target:
-      kind: Deployment
-      name: broadcaster
-    patch: |
-      - op: replace
-        path: /spec/replicas
-        value: 1
+patches:
+- patch: |
+    - op: replace
+      path: /spec/replicas
+      value: 1
+  target:
+    kind: Deployment
+    name: broadcaster
 # The staging release workflow sets the images built from the latest commit to main
 images:
 - name: parthvasave/broadcaster
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/broadcaster
-  newTag: 3d1d7b8c7731958a5452c4ef60ce158d9ee35bea
+  newTag: 02bd87c7804b414da83c8543805b6ea54645a93a
 - name: parthvasave/todo-app
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-app
-  newTag: 3d1d7b8c7731958a5452c4ef60ce158d9ee35bea
+  newTag: 02bd87c7804b414da83c8543805b6ea54645a93a
 - name: parthvasave/todo-backend
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-backend
-  newTag: 3d1d7b8c7731958a5452c4ef60ce158d9ee35bea
+  newTag: 02bd87c7804b414da83c8543805b6ea54645a93a

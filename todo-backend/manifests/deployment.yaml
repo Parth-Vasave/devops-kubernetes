@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: parthvasave/todo-backend:2.8
+          image: parthvasave/todo-backend:2.10
           envFrom:
             - configMapRef:
                 name: todo-backend-config

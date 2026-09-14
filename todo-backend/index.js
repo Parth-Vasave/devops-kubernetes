@@ -2,9 +2,20 @@ const express = require("express");
 const { Pool } = require("pg");
 
 const app = express();
-app.use(express.json());
 
 const PORT = process.env.PORT;
+const MAX_TODO_LENGTH = 140;
+
+// Log every request with its status code and duration
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  res.on("finish", () => {
+    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startTime}ms`);
+  });
+  next();
+});
+
+app.use(express.json());
 
 // Connection settings come from the PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE env variables
 const pool = new Pool();
@@ -23,13 +34,16 @@ app.get("/todos", async (req, res) => {
 
 // POST /todos - create a new todo
 app.post("/todos", async (req, res) => {
-  const content = (req.body && req.body.content) ? req.body.content.trim() : "";
+  const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
+  console.log(`Received todo (${content.length} characters): ${content}`);
 
   if (!content) {
+    console.log("Rejected todo: content is empty");
     return res.status(400).json({ error: "Todo content is required" });
   }
-  if (content.length > 140) {
-    return res.status(400).json({ error: "Todo must be 140 characters or fewer" });
+  if (content.length > MAX_TODO_LENGTH) {
+    console.log(`Rejected todo: ${content.length} characters exceeds the ${MAX_TODO_LENGTH} character limit: ${content}`);
+    return res.status(400).json({ error: `Todo must be ${MAX_TODO_LENGTH} characters or fewer` });
   }
 
   const result = await pool.query(

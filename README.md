@@ -88,3 +88,5 @@
 - [4.5.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.5)
 
 - [4.6.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.6)
+
+- [4.7.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.7/log-output)

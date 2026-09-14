@@ -2,11 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Synced to the cluster by Argo CD (see ../argocd-application.yaml)
 resources:
-  - configmap.yaml
-  - deployment.yaml
-  - gateway.yaml
-  - route.yaml
+- configmap.yaml
+- deployment.yaml
+- gateway.yaml
+- route.yaml
 # The release workflow sets the image to the one built from the latest commit
 images:
-  - name: parthvasave/log-output
-    newTag: "4.1"
+- name: parthvasave/log-output
+  newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/exercises/log-output
+  newTag: 4cd47465657f3709174662734f29584ebdfa85e2

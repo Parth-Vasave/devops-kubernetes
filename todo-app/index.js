@@ -289,9 +289,10 @@ app.get("/", async (req, res) => {
           }
           #send-btn:hover { background: #388e3c; }
           #char-count {
+            width: 100%;
+            max-width: 640px;
             font-size: 0.8rem;
             color: #999;
-            align-self: flex-start;
             margin-bottom: 1.5rem;
           }
           #char-count.over { color: #e53935; }

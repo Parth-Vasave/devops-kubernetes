@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: cpu-usage
+  namespace: exercises
+spec:
+  metrics:
+    # Total CPU usage rate (cores) of all containers in the namespace, measured every minute for 5 minutes
+    - name: cpu-usage
+      interval: 1m
+      count: 6
+      # A single measurement above the limit fails the analysis and aborts the update
+      failureLimit: 0
+      # About 0.015 cores is normal for the namespace; 0.1 leaves room for a new pod starting up
+      successCondition: result[0] < 0.1
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.prometheus.svc.cluster.local:9090
+          # container!="" skips the pod-level cgroup series, which would count every container twice
+          query: |
+            sum(rate(container_cpu_usage_seconds_total{namespace="exercises", container!=""}[2m]))

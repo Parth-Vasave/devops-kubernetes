@@ -8,6 +8,8 @@ Provides a REST API for managing todo items (stored in a PostgreSQL database sin
 
 Database connection settings are read from the `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` environment variables.
 
+A CronJob (`manifests/cronjob.yaml`, Exercise 2.9) creates a `Read <URL>` todo for a random Wikipedia article every hour.
+
 - `GET /todos` — returns the list of all todos as JSON.
 - `POST /todos` — creates a new todo. Requires a JSON body `{ "content": "..." }`. Content must be ≤ 140 characters.
 

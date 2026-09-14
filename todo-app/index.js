@@ -72,16 +72,13 @@ const postTodo = (content) => {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ content });
     const options = {
-      hostname: "todo-backend",
-      port: 3000,
-      path: "/todos",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(body),
       },
     };
-    const req = http.request(options, (res) => {
+    const req = http.request(`${TODO_BACKEND_URL}/todos`, options, (res) => {
       let data = "";
       res.on("data", (chunk) => { data += chunk; });
       res.on("end", () => resolve({ status: res.statusCode, body: data }));

@@ -15,6 +15,8 @@ A CronJob (`manifests/cronjob.yaml`, Exercise 2.9) creates a `Read <URL>` todo f
 - `PUT /todos/:id` — updates whether a todo is done (Exercise 4.5). Requires a JSON body `{ "done": true }` or `{ "done": false }` and returns the updated todo; 400 for an invalid id or body, 404 if the todo does not exist.
 - `GET /healthz` and `GET /readyz` — liveness and readiness probes (Exercise 4.2).
 
+After a todo is created or updated, the backend publishes `{ "action": "created" | "updated", "todo": { ... } }` to the `todos` subject in NATS (`NATS_URL`) for the broadcaster (Exercise 4.6). Publishing is best effort: if NATS is unavailable the todo is still saved and only the message is skipped.
+
 The `done` column is added on startup with `ALTER TABLE todos ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false`, so existing databases are migrated and their todos start as not done.
 
 Every request is logged (method, path, status code, duration), along with each received todo and whether it was created or rejected.

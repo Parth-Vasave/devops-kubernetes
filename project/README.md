@@ -205,3 +205,9 @@ PUT /todos/6 200 21ms
 ```
 
 Todo content is HTML-escaped when the page is rendered, so a todo containing markup is shown as text.
+
+## Broadcaster (Exercise 4.6)
+
+Todo changes are sent to Discord. todo-backend publishes a message to NATS whenever a todo is created or updated, and the `broadcaster` service (6 replicas in one NATS queue group, so each message is sent once) forwards it to a Discord webhook. See `broadcaster/README.md` for the design and tests.
+
+NATS and the broadcaster are part of this kustomization. The Discord webhook secret (`broadcaster/manifests/secret.enc.yaml`) is only added to the main environment, so branch environments log the messages instead of posting them.

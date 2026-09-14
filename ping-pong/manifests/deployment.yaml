@@ -15,10 +15,29 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: parthvasave/ping-pong:2.6
+          image: parthvasave/ping-pong:2.7
           env:
             - name: PORT
               value: "3000"
+            - name: PGHOST
+              value: "postgres-svc"
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
           ports:
             - containerPort: 3000
 ---

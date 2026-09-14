@@ -8,33 +8,34 @@ resources:
 # The backup CronJob is not included, so the staging database is not backed up.
 generators:
 - secret-generator.yaml
-  # Staging does not need production's 6 broadcaster replicas
+# Lists are indented the way kustomize edit writes them, so the release workflow's edits keep the file valid
 patches:
-  # Shows a "staging environment" banner in the todo app
-  - target:
-      kind: Deployment
-      name: todo-app
-    patch: |
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value:
-          name: ENVIRONMENT
-          value: staging
-- patch: |
+# Staging does not need production's 6 broadcaster replicas
+- target:
+    kind: Deployment
+    name: broadcaster
+  patch: |
     - op: replace
       path: /spec/replicas
       value: 1
-  target:
+# Shows a "staging environment" banner in the todo app
+- target:
     kind: Deployment
-    name: broadcaster
+    name: todo-app
+  patch: |
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: ENVIRONMENT
+        value: staging
 # The staging release workflow sets the images built from the latest commit to main
 images:
 - name: parthvasave/broadcaster
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/broadcaster
-  newTag: 02bd87c7804b414da83c8543805b6ea54645a93a
+  newTag: 4a466cbd80ea9fa0ab361158877ca5d39004abd1
 - name: parthvasave/todo-app
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-app
-  newTag: 02bd87c7804b414da83c8543805b6ea54645a93a
+  newTag: 4a466cbd80ea9fa0ab361158877ca5d39004abd1
 - name: parthvasave/todo-backend
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-backend
-  newTag: 02bd87c7804b414da83c8543805b6ea54645a93a
+  newTag: 4a466cbd80ea9fa0ab361158877ca5d39004abd1

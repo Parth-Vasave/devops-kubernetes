@@ -1,0 +1,25 @@
+# L7 policy enforced by the waypoint: GET requests from the curl service account are allowed.
+# The gateway is also allowed so that the app keeps working in the browser and Kiali keeps seeing traffic.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: productpage-viewer
+  namespace: default
+spec:
+  targetRefs:
+    - kind: Service
+      group: ""
+      name: productpage
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/default/sa/curl
+      to:
+        - operation:
+            methods: ["GET"]
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/default/sa/bookinfo-gateway-istio

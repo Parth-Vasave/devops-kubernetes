@@ -1,0 +1,52 @@
+# kube-prometheus-stack only scrapes what ServiceMonitors and PodMonitors select, and its Prometheus picks up
+# monitors labelled release: kube-prometheus-stack. These collect the metrics Kiali needs in ambient mode.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ztunnel
+  namespace: istio-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  # ztunnel reports L4 (TCP) traffic between workloads, e.g. istio_tcp_sent_bytes_total
+  selector:
+    matchLabels:
+      app: ztunnel
+  podMetricsEndpoints:
+    - port: ztunnel-stats
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: waypoints
+  namespace: istio-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  # Waypoint proxies (Envoy) report L7 (HTTP) traffic, e.g. istio_requests_total
+  namespaceSelector:
+    any: true
+  selector:
+    matchExpressions:
+      - key: gateway.istio.io/managed
+        operator: In
+        values: ["istio.io-mesh-controller", "istio.io-gateway-controller"]
+  podMetricsEndpoints:
+    - port: http-envoy-prom
+      path: /stats/prometheus
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istiod
+  namespace: istio-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: istiod
+  podMetricsEndpoints:
+    - port: http-monitoring
+      path: /metrics

@@ -100,3 +100,5 @@
 ### Chapter 6
 
 - [5.1.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.1/dummysite)
+
+- [5.2.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.2/istio)

@@ -2,21 +2,21 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Production: deployed by Argo CD from main with the images of the latest git tag (see ../../argocd/production.yaml)
 namespace: production
-resources:
-  - ../../base
   # Only production backs up its database to Cloud Storage
-  - ../../../todo-backend/backup
+resources:
+- ../../base
+- ../../../todo-backend/backup
 # Decrypts the database and Discord webhook secrets with KSOPS inside Argo CD
 generators:
-  - secret-generator.yaml
+- secret-generator.yaml
 # The production release workflow sets the images built for the latest tag
 images:
 - name: parthvasave/broadcaster
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/broadcaster
-  newTag: 3d1d7b8c7731958a5452c4ef60ce158d9ee35bea
+  newTag: 72344745d4a004eb4a505cffd3e0dc6e24805e21
 - name: parthvasave/todo-app
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-app
-  newTag: 3d1d7b8c7731958a5452c4ef60ce158d9ee35bea
+  newTag: 72344745d4a004eb4a505cffd3e0dc6e24805e21
 - name: parthvasave/todo-backend
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/todo-backend
-  newTag: 3d1d7b8c7731958a5452c4ef60ce158d9ee35bea
+  newTag: 72344745d4a004eb4a505cffd3e0dc6e24805e21

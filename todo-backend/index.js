@@ -1,10 +1,13 @@
 const express = require("express");
 const { Pool } = require("pg");
+const { connect } = require("@nats-io/transport-node");
 
 const app = express();
 
 const PORT = process.env.PORT;
 const MAX_TODO_LENGTH = 140;
+const NATS_URL = process.env.NATS_URL;
+const NATS_SUBJECT = "todos";
 
 const PROBE_PATHS = ["/healthz", "/readyz"];
 
@@ -32,6 +35,16 @@ pool.on("error", (err) => {
 });
 
 let dbInitialized = false;
+let nats = null;
+
+// Status messages are best effort: a todo is still saved if NATS is unavailable
+const publishTodoEvent = (action, todo) => {
+  if (!nats || nats.isClosed()) {
+    console.error(`NATS is not connected, the ${action} message for todo ${todo.id} was not sent`);
+    return;
+  }
+  nats.publish(NATS_SUBJECT, JSON.stringify({ action, todo }));
+};
 
 const initDb = async () => {
   await pool.query(
@@ -88,6 +101,7 @@ app.post("/todos", async (req, res) => {
     [content]
   );
   console.log(`Created todo: ${content}`);
+  publishTodoEvent("created", result.rows[0]);
   res.status(201).json(result.rows[0]);
 });
 
@@ -109,6 +123,7 @@ app.put("/todos/:id", async (req, res) => {
     return res.status(404).json({ error: "Todo not found" });
   }
   console.log(`Marked todo ${id} as ${req.body.done ? "done" : "not done"}: ${result.rows[0].content}`);
+  publishTodoEvent("updated", result.rows[0]);
   res.json(result.rows[0]);
 });
 
@@ -137,3 +152,15 @@ const connectDb = async () => {
 };
 
 connectDb();
+
+// Keeps trying to connect, and reconnects automatically if the connection is lost
+const connectNats = async () => {
+  try {
+    nats = await connect({ servers: NATS_URL, name: "todo-backend", waitOnFirstConnect: true, maxReconnectAttempts: -1 });
+    console.log(`Connected to NATS at ${nats.getServer()}`);
+  } catch (err) {
+    console.error("Failed to connect to NATS:", err.message);
+  }
+};
+
+connectNats();

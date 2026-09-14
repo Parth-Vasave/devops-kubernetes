@@ -6,8 +6,11 @@ resources:
   - ../todo-app/manifests
   - ../todo-backend/manifests
   - ../todo-backend/backup
+  - ../broadcaster/manifests
 images:
   - name: parthvasave/todo-app
     newTag: "3.5"
   - name: parthvasave/todo-backend
     newTag: "3.5"
+  - name: parthvasave/broadcaster
+    newTag: "4.6"

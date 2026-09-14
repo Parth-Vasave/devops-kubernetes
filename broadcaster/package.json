@@ -1,18 +1,14 @@
 {
-  "name": "todo-backend",
+  "name": "broadcaster",
   "version": "1.0.0",
-  "description": "",
+  "description": "Forwards todo status messages from NATS to Discord – DevOps with Kubernetes Exercise 4.6.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@nats-io/transport-node": "^3.4.0",
-    "express": "^5.2.1",
-    "pg": "^8.23.0"
+    "@nats-io/transport-node": "^3.4.0"
   }
 }

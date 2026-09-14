@@ -57,7 +57,7 @@ jobs:
 
       - name: Build and publish images
         run: |
-          for app in todo-app todo-backend; do
+          for app in todo-app todo-backend broadcaster; do
             docker build --tag "$REGISTRY/$app:$GITHUB_SHA" "$app"
             docker push "$REGISTRY/$app:$GITHUB_SHA"
           done
@@ -80,14 +80,19 @@ jobs:
           # The decrypted secret only exists on the runner; adding it to the kustomization puts it in the target namespace
           sops --decrypt ../todo-backend/manifests/secret.enc.yaml > secret.yaml
           kustomize edit add resource secret.yaml
-          # Only the main environment backs up its database to Cloud Storage
-          if [ "$NAMESPACE" != "project" ]; then
+          if [ "$NAMESPACE" = "project" ]; then
+            # Only the main environment posts to Discord; branch broadcasters just log the messages
+            sops --decrypt ../broadcaster/manifests/secret.enc.yaml > broadcaster-secret.yaml
+            kustomize edit add resource broadcaster-secret.yaml
+          else
+            # Only the main environment backs up its database to Cloud Storage
             kustomize edit remove resource ../todo-backend/backup
           fi
           kustomize edit set namespace "$NAMESPACE"
           kustomize edit set image \
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \
-            "parthvasave/todo-backend=$REGISTRY/todo-backend:$GITHUB_SHA"
+            "parthvasave/todo-backend=$REGISTRY/todo-backend:$GITHUB_SHA" \
+            "parthvasave/broadcaster=$REGISTRY/broadcaster:$GITHUB_SHA"
           kustomize build . | kubectl apply -f -
           # Branch environments are labeled so the delete workflow only removes namespaces this pipeline created
           if [ "$NAMESPACE" != "project" ]; then
@@ -95,4 +100,6 @@ jobs:
           fi
           kubectl -n "$NAMESPACE" rollout status deployment/todo-backend --timeout=300s
           kubectl -n "$NAMESPACE" rollout status deployment/todo-app --timeout=300s
+          kubectl -n "$NAMESPACE" rollout status deployment/nats --timeout=300s
+          kubectl -n "$NAMESPACE" rollout status deployment/broadcaster --timeout=300s
           kubectl -n "$NAMESPACE" get gateway todo-gateway

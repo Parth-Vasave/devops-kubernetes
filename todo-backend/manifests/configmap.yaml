@@ -6,3 +6,4 @@ metadata:
 data:
   PGHOST: "postgres-svc"
   PGPORT: "5432"
+  NATS_URL: "nats://nats:4222"

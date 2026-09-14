@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broadcaster
+  namespace: project
+spec:
+  # The replicas share a NATS queue group, so every message is still sent only once
+  replicas: 6
+  selector:
+    matchLabels:
+      app: broadcaster
+  template:
+    metadata:
+      labels:
+        app: broadcaster
+    spec:
+      containers:
+        - name: broadcaster
+          image: parthvasave/broadcaster
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NATS_URL
+              value: "nats://nats:4222"
+            # Only the main environment has this secret; without it messages are logged instead of sent
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: broadcaster-secret
+                  key: DISCORD_WEBHOOK_URL
+                  optional: true
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10

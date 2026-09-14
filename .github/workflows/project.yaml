@@ -1,0 +1,67 @@
+name: Deploy project
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "project/**"
+      - "todo-app/**"
+      - "todo-backend/**"
+      - ".github/workflows/project.yaml"
+
+env:
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: asia-south1-a
+  REGISTRY: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project
+
+jobs:
+  build-publish-deploy:
+    name: Build, publish and deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Workload Identity Federation: GitHub's OIDC token is exchanged for short-lived Google credentials
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/418821991749/locations/global/workloadIdentityPools/github/providers/github-repo
+          service_account: github-actions-deployer@devops-kubernetes-508609.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_ZONE }}
+
+      - name: Build and publish images
+        run: |
+          for app in todo-app todo-backend; do
+            docker build --tag "$REGISTRY/$app:$GITHUB_SHA" "$app"
+            docker push "$REGISTRY/$app:$GITHUB_SHA"
+          done
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Deploy
+        working-directory: project
+        run: |
+          kustomize edit set image \
+            "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \
+            "parthvasave/todo-backend=$REGISTRY/todo-backend:$GITHUB_SHA"
+          kustomize build . | kubectl apply -f -
+          kubectl -n project rollout status deployment/todo-backend --timeout=300s
+          kubectl -n project rollout status deployment/todo-app --timeout=300s

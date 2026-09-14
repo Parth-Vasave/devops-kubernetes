@@ -5,6 +5,9 @@ metadata:
   namespace: project
 spec:
   replicas: 1
+  # todo-pvc is ReadWriteOnce, so the old pod must release it before the new one starts
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: todo-app

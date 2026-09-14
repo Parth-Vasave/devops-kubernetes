@@ -17,6 +17,11 @@ const initDb = async () => {
   );
 };
 
+// GKE Ingress health checks hit / and mark the backend unhealthy unless it returns 200
+app.get("/", (req, res) => {
+  res.send("ok");
+});
+
 app.get("/pingpong", async (req, res) => {
   const result = await pool.query(
     "UPDATE pingpong SET counter = counter + 1 WHERE id = 1 RETURNING counter - 1 AS previous"

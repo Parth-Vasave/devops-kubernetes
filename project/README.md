@@ -1,14 +1,12 @@
 # Todo Project
 
-Kustomize entry point for the todo project (Exercise 3.5).
+Documentation for the todo project.
 
-- `base/` combines the manifests of todo-app, todo-backend and broadcaster.
-- `overlays/staging/` and `overlays/production/` are the two environments Argo CD deploys (Exercise 4.9), each in its own namespace. See [Staging and production](#staging-and-production-exercise-49).
-- `argocd/` has their Argo CD Applications.
+Since Exercise 4.10 the Kubernetes configuration (base, staging and production overlays, service manifests and Argo CD Applications) is in its own repository, [Parth-Vasave/dwk-project-config](https://github.com/Parth-Vasave/dwk-project-config). This repository contains the application code and the workflows that build and release it. See [Separate code and configuration repositories](#separate-code-and-configuration-repositories-exercise-410). Paths such as `project/overlays/...` and `todo-backend/manifests` in the sections below refer to the configuration repository.
 
 ## Deploy
 
-Staging and production are deployed by Argo CD. A manual deploy of the base to a namespace of your own still works:
+Staging and production are deployed by Argo CD. A manual deploy of the base to a namespace of your own still works from a clone of the configuration repository:
 
 ```bash
 kubectl apply -k project/base   # namespace "project"
@@ -315,3 +313,24 @@ The previous `project` environment was replaced by `production`. The todos were 
 - **Staging broadcaster:** creating a todo in staging logged `No Discord webhook configured, message not sent: A todo was created: Staging broadcaster test`.
 - **Backups:** staging has only the `random-wiki-todo` CronJob, and production also has `todo-backup`. A manual run in production uploaded `backup-2026-09-14-162246.sql` to the bucket.
 - **Production release:** pushing the tag `4.9` runs the production workflow, which builds the images from the tagged commit and commits them to `overlays/production`.
+
+## Separate code and configuration repositories (Exercise 4.10)
+
+| Repository | Contents | Who commits |
+| --- | --- | --- |
+| [devops-kubernetes](https://github.com/Parth-Vasave/devops-kubernetes) (this one) | Application code, Dockerfiles, CI workflows, documentation | Developers |
+| [dwk-project-config](https://github.com/Parth-Vasave/dwk-project-config) | `project/base`, `project/overlays/{staging,production}`, service manifests, encrypted secrets, Argo CD Applications | Release workflows (image tags) and manual configuration changes |
+
+```
+devops-kubernetes                                   dwk-project-config                     cluster
+commit to main ──▶ build images ──▶ commit tags to project/overlays/staging    ──▶ Argo CD ──▶ staging
+git tag        ──▶ build images ──▶ commit tags to project/overlays/production ──▶ Argo CD ──▶ production
+```
+
+- **Release workflows** (`project-release.yaml` for staging, `project-production.yaml` for production) build the images, check out the configuration repository and commit the new image tags there. The commit message links to the code commit that was released. They push with a **deploy key** (`CONFIG_REPO_DEPLOY_KEY` secret) that has write access to the configuration repository only. The workflows' own `GITHUB_TOKEN` is read-only.
+- **Argo CD** Applications `project-staging` and `project-production` track `main` of the configuration repository. Code commits no longer appear in the configuration history, and configuration changes no longer need a commit to the code repository.
+- **Branch environments** (`project.yaml`) check out the configuration repository and deploy its `project/base` with the branch's images.
+
+The configuration repository was created from the existing files with the same relative paths. Before switching Argo CD to it, both overlays were built from the old and the new location inside the Argo CD repo server, and the output was identical (same SHA-256 and resource count). Switching the Applications' `repoURL` therefore changed nothing in the cluster: both stayed Synced and Healthy.
+
+Log output (Exercise 4.7) still uses its manifests in this repository; the exercise only required the project to be split.

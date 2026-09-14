@@ -23,8 +23,7 @@ jobs:
     name: Build, publish and release
     runs-on: ubuntu-latest
     permissions:
-      # Needed to push the commit that updates the image tags
-      contents: write
+      contents: read
       id-token: write
 
     steps:
@@ -53,8 +52,17 @@ jobs:
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v3
 
-      # The cluster is not touched here: Argo CD notices the new image tags in Git and deploys them to staging
-      - name: Update the staging image tags in Git
+      # The configuration lives in its own repository; the deploy key can only write to that repository
+      - name: Checkout the configuration repository
+        uses: actions/checkout@v7
+        with:
+          repository: Parth-Vasave/dwk-project-config
+          ssh-key: ${{ secrets.CONFIG_REPO_DEPLOY_KEY }}
+          path: config
+
+      # The cluster is not touched here: Argo CD notices the new image tags in the configuration repository and deploys them to staging
+      - name: Update the staging image tags
+        working-directory: config
         run: |
           cd project/overlays/staging
           kustomize edit set image \
@@ -65,7 +73,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add project/overlays/staging/kustomization.yaml
-          git commit --message "Release project ${GITHUB_SHA::7} to staging"
-          # Commits pushed with GITHUB_TOKEN do not start new workflow runs, so this cannot loop
+          git commit --message "Release ${GITHUB_SHA::7} to staging" --message "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
           git pull --rebase
           git push

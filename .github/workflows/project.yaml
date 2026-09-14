@@ -29,6 +29,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Checkout the configuration repository
+        uses: actions/checkout@v7
+        with:
+          repository: Parth-Vasave/dwk-project-config
+          path: config
+
       # Each branch is deployed to a namespace named after the branch
       - name: Choose namespace
         run: |
@@ -76,7 +82,7 @@ jobs:
           sudo install -m 0755 "sops-$SOPS_VERSION.linux.amd64" /usr/local/bin/sops
 
       - name: Deploy
-        working-directory: project/base
+        working-directory: config/project/base
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |

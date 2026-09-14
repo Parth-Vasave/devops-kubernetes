@@ -17,8 +17,7 @@ jobs:
     name: Build, publish and release
     runs-on: ubuntu-latest
     permissions:
-      # Needed to push the commit that updates the image tags
-      contents: write
+      contents: read
       id-token: write
 
     steps:
@@ -48,11 +47,18 @@ jobs:
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v3
 
-      # Argo CD deploys production from main, so the new image tags are committed there
-      - name: Update the production image tags in Git
+      # The configuration lives in its own repository; the deploy key can only write to that repository
+      - name: Checkout the configuration repository
+        uses: actions/checkout@v7
+        with:
+          repository: Parth-Vasave/dwk-project-config
+          ssh-key: ${{ secrets.CONFIG_REPO_DEPLOY_KEY }}
+          path: config
+
+      # Argo CD deploys production from the configuration repository, so the new image tags are committed there
+      - name: Update the production image tags
+        working-directory: config
         run: |
-          git fetch origin main
-          git checkout -B main origin/main
           cd project/overlays/production
           kustomize edit set image \
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \
@@ -66,7 +72,6 @@ jobs:
             echo "Production already runs ${GITHUB_SHA::7}"
             exit 0
           fi
-          git commit --message "Release project ${GITHUB_REF_NAME} (${GITHUB_SHA::7}) to production"
-          # Commits pushed with GITHUB_TOKEN do not start new workflow runs, so this cannot loop
-          git pull --rebase origin main
-          git push origin main
+          git commit --message "Release ${GITHUB_REF_NAME} (${GITHUB_SHA::7}) to production" --message "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+          git pull --rebase
+          git push

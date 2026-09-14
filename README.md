@@ -36,3 +36,7 @@
 - [2.3.](https://github.com/Parth-Vasave/devops-kubernetes/tree/2.3/todo-app)
 
 - [2.4.](https://github.com/Parth-Vasave/devops-kubernetes/tree/2.4)
+
+- [2.5.](https://github.com/Parth-Vasave/devops-kubernetes/tree/2.5/log-output)
+
+- [2.6.](https://github.com/Parth-Vasave/devops-kubernetes/tree/2.6)

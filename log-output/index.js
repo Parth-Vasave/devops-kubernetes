@@ -4,10 +4,10 @@ const express = require("express");
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 const logPath = "/shared-data/log.txt";
 const configPath = "/etc/config/information.txt";
-const PING_PONG_URL = "http://ping-pong:3000/pings";
+const PING_PONG_URL = process.env.PING_PONG_URL;
 
 const fetchPings = () => {
   return new Promise((resolve) => {

@@ -8,11 +8,11 @@ const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 const IMAGE_DIR = "/app/files";
 const IMAGE_PATH = path.join(IMAGE_DIR, "image.jpg");
 const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
-const TODO_BACKEND_URL = "http://todo-backend:3000";
+const TODO_BACKEND_URL = process.env.TODO_BACKEND_URL;
 
 // Serve cached image file
 app.use(express.static(IMAGE_DIR));
@@ -112,7 +112,7 @@ app.get("/", async (req, res) => {
 
   if (!isImageFresh()) {
     try {
-      await downloadImage("https://picsum.photos/1200", IMAGE_PATH);
+      await downloadImage(process.env.IMAGE_URL, IMAGE_PATH);
       console.log("Downloaded new image from picsum.photos");
     } catch (err) {
       console.error("Failed to download image:", err.message);

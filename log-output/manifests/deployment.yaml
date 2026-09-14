@@ -15,22 +15,26 @@ spec:
     spec:
       containers:
         - name: generator
-          image: parthvasave/log-output:2.5
+          image: parthvasave/log-output:2.6
           command: ["node", "generator.js"]
           volumeMounts:
             - name: shared-data
               mountPath: /shared-data
 
         - name: log-output
-          image: parthvasave/log-output:2.5
+          image: parthvasave/log-output:2.6
           ports:
             - containerPort: 3000
           env:
+            - name: PORT
+              value: "3000"
             - name: MESSAGE
               valueFrom:
                 configMapKeyRef:
                   name: log-output-config
                   key: MESSAGE
+            - name: PING_PONG_URL
+              value: "http://ping-pong:3000/pings"
           volumeMounts:
             - name: shared-data
               mountPath: /shared-data

@@ -17,12 +17,13 @@ const initDb = async () => {
   );
 };
 
-// GKE Ingress health checks hit / and mark the backend unhealthy unless it returns 200
-app.get("/", (req, res) => {
+// Load balancer health checks use this path so they do not increment the counter
+app.get("/healthz", (req, res) => {
   res.send("ok");
 });
 
-app.get("/pingpong", async (req, res) => {
+// The Gateway rewrites /pingpong to / before forwarding requests here
+app.get("/", async (req, res) => {
   const result = await pool.query(
     "UPDATE pingpong SET counter = counter + 1 WHERE id = 1 RETURNING counter - 1 AS previous"
   );

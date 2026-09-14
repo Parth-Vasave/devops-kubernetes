@@ -1,0 +1,16 @@
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: ping-pong-healthcheck
+  namespace: exercises
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: 3000
+        requestPath: /healthz
+  targetRef:
+    group: ""
+    kind: Service
+    name: ping-pong

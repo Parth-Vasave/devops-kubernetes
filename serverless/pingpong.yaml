@@ -1,0 +1,34 @@
+# Ping-pong as a Knative Service: Knative creates the revisions, routes and autoscaling, and scales it to zero when idle
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: pingpong
+  namespace: exercises
+spec:
+  template:
+    metadata:
+      annotations:
+        # Keep a single pod at most; the counter lives in PostgreSQL, so more would also work
+        autoscaling.knative.dev/max-scale: "1"
+    spec:
+      containers:
+        - image: parthvasave/ping-pong:5.3
+          # Knative sets the PORT environment variable (8080) that the app listens on
+          ports:
+            - containerPort: 8080
+          env:
+            # Fully qualified names, as calls from Knative pods should not rely on the namespace search path
+            - name: PGHOST
+              value: psql-svc.exercises.svc.cluster.local
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: postgres-secret, key: POSTGRES_USER } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: postgres-secret, key: POSTGRES_PASSWORD } }
+            - name: PGDATABASE
+              valueFrom: { secretKeyRef: { name: postgres-secret, key: POSTGRES_DB } }
+          # Knative routes traffic to a new pod only after it is ready, i.e. connected to the database
+          readinessProbe:
+            httpGet:
+              path: /readyz

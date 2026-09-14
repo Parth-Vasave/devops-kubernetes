@@ -110,3 +110,5 @@
 - [5.5.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.5/platform-comparison)
 
 - [5.6.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.6/knative)
+
+- [5.7.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.7/serverless)

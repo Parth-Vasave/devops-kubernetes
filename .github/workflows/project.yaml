@@ -80,6 +80,10 @@ jobs:
           # The decrypted secret only exists on the runner; adding it to the kustomization puts it in the target namespace
           sops --decrypt ../todo-backend/manifests/secret.enc.yaml > secret.yaml
           kustomize edit add resource secret.yaml
+          # Only the main environment backs up its database to Cloud Storage
+          if [ "$NAMESPACE" != "project" ]; then
+            kustomize edit remove resource ../todo-backend/backup
+          fi
           kustomize edit set namespace "$NAMESPACE"
           kustomize edit set image \
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \

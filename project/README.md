@@ -17,6 +17,30 @@ On Google Kubernetes Engine the app is exposed through a Gateway:
 kubectl -n project get gateway todo-gateway
 ```
 
+## Database backups (Exercise 3.10)
+
+The `todo-backup` CronJob (`todo-backend/backup`) dumps the database with `pg_dump` every day at 02:00 India time and uploads the dump to the Cloud Storage bucket `devops-kubernetes-508609-todo-backups`. Backups are deleted after 30 days by the bucket's lifecycle rule.
+
+The job gets access to the bucket with Workload Identity, so no key file is needed. The bucket grants `roles/storage.objectCreator` and `roles/storage.objectViewer` to the `todo-backup` Kubernetes service account in the `project` namespace:
+
+```bash
+gcloud container clusters update dwk-cluster --zone=asia-south1-a --workload-pool=devops-kubernetes-508609.svc.id.goog
+gcloud container node-pools update default-pool --cluster=dwk-cluster --zone=asia-south1-a --workload-metadata=GKE_METADATA
+
+gcloud storage buckets create gs://devops-kubernetes-508609-todo-backups --location=asia-south1 --uniform-bucket-level-access --public-access-prevention
+MEMBER="principal://iam.googleapis.com/projects/418821991749/locations/global/workloadIdentityPools/devops-kubernetes-508609.svc.id.goog/subject/ns/project/sa/todo-backup"
+gcloud storage buckets add-iam-policy-binding gs://devops-kubernetes-508609-todo-backups --role=roles/storage.objectCreator --member="$MEMBER"
+gcloud storage buckets add-iam-policy-binding gs://devops-kubernetes-508609-todo-backups --role=roles/storage.objectViewer --member="$MEMBER"
+```
+
+Only the main environment is backed up; the deploy workflow leaves the CronJob out of branch environments. Run a backup immediately, list backups, or restore one (into an empty database, since the dump creates the tables):
+
+```bash
+kubectl -n project create job manual-backup --from=cronjob/todo-backup
+gcloud storage ls gs://devops-kubernetes-508609-todo-backups/
+gcloud storage cat gs://devops-kubernetes-508609-todo-backups/<backup file> | kubectl -n project exec -i postgres-ss-0 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
 ## DBaaS vs DIY (Exercise 3.9)
 
 The project runs PostgreSQL itself: a StatefulSet with a headless service and a PersistentVolumeClaim in the same namespace as the apps (`todo-backend/manifests/postgres.yaml`). This is compared with a managed database service (DBaaS), such as Google Cloud SQL for PostgreSQL.

@@ -10,4 +10,4 @@ resources:
 images:
 - name: parthvasave/log-output
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/exercises/log-output
-  newTag: 03781f7b92162326db7709dff6236320260f3ef0
+  newTag: 11554d56b519a002f845f2d275bc165fbfb6e4ac

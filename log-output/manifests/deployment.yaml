@@ -15,16 +15,24 @@ spec:
     spec:
       containers:
         - name: generator
-          image: parthvasave/log-output:3.2
+          image: parthvasave/log-output:4.1
           command: ["node", "generator.js"]
           volumeMounts:
             - name: shared-data
               mountPath: /shared-data
 
         - name: log-output
-          image: parthvasave/log-output:3.2
+          image: parthvasave/log-output:4.1
           ports:
             - containerPort: 3000
+          # Ready only when the ping count can be fetched from Ping-pong
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           env:
             - name: PORT
               value: "3000"

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: parthvasave/ping-pong:3.4
+          image: parthvasave/ping-pong:4.1
           env:
             - name: PORT
               value: "3000"
@@ -40,6 +40,14 @@ spec:
                   key: POSTGRES_DB
           ports:
             - containerPort: 3000
+          # Ready only when the app can query the database
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
 ---
 apiVersion: v1
 kind: Service

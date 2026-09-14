@@ -22,6 +22,22 @@ const fetchPings = () => {
   });
 };
 
+// Readiness probe: the pod is ready only when Ping-pong answers with the ping count
+app.get("/readyz", (req, res) => {
+  const request = http.get(PING_PONG_URL, { timeout: 2000 }, (pingRes) => {
+    pingRes.resume();
+    if (pingRes.statusCode === 200) {
+      res.send("ok");
+    } else {
+      res.status(503).send(`ping-pong responded with ${pingRes.statusCode}`);
+    }
+  });
+  request.on("timeout", () => request.destroy(new Error("timed out")));
+  request.on("error", (err) => {
+    res.status(503).send(`ping-pong unavailable: ${err.message}`);
+  });
+});
+
 app.get("/", async (req, res) => {
   try {
     const logContent = fs.readFileSync(logPath, "utf8");

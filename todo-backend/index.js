@@ -6,8 +6,13 @@ const app = express();
 const PORT = process.env.PORT;
 const MAX_TODO_LENGTH = 140;
 
-// Log every request with its status code and duration
+const PROBE_PATHS = ["/healthz", "/readyz"];
+
+// Log every request with its status code and duration (probe requests every few seconds are left out)
 app.use((req, res, next) => {
+  if (PROBE_PATHS.includes(req.path)) {
+    return next();
+  }
   const startTime = Date.now();
   res.on("finish", () => {
     console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startTime}ms`);
@@ -18,13 +23,41 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // Connection settings come from the PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE env variables
-const pool = new Pool();
+// Connection attempts time out so readiness checks fail quickly while the database is unreachable
+const pool = new Pool({ connectionTimeoutMillis: 2000 });
+
+// Idle connections break when the database restarts; without a handler the error would crash the app
+pool.on("error", (err) => {
+  console.error("Lost an idle database connection:", err.message);
+});
+
+let dbInitialized = false;
 
 const initDb = async () => {
   await pool.query(
     "CREATE TABLE IF NOT EXISTS todos (id SERIAL PRIMARY KEY, content VARCHAR(140) NOT NULL)"
   );
+  dbInitialized = true;
 };
+
+// Liveness probe: the server is running and answering requests
+app.get("/healthz", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Readiness probe: the backend is ready only when the database answers a query
+app.get("/readyz", async (req, res) => {
+  if (!dbInitialized) {
+    return res.status(503).json({ status: "database not initialized" });
+  }
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok" });
+  } catch (err) {
+    console.error("Readiness check failed:", err.message);
+    res.status(503).json({ status: "database unavailable" });
+  }
+});
 
 // GET /todos - return all todos
 app.get("/todos", async (req, res) => {
@@ -54,21 +87,22 @@ app.post("/todos", async (req, res) => {
   res.status(201).json(result.rows[0]);
 });
 
-const start = async () => {
-  // Wait until the database accepts connections before serving requests
+// The server starts right away so the probes can report the database state
+app.listen(PORT, () => {
+  console.log(`Server started in port ${PORT}`);
+});
+
+const connectDb = async () => {
   while (true) {
     try {
       await initDb();
+      console.log("Connected to the database");
       break;
     } catch (err) {
       console.error("Database not ready, retrying in 5 seconds:", err.message);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
-
-  app.listen(PORT, () => {
-    console.log(`Server started in port ${PORT}`);
-  });
 };
 
-start();
+connectDb();

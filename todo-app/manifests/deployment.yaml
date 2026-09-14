@@ -35,6 +35,23 @@ spec:
               value: "https://picsum.photos/1200"
           ports:
             - containerPort: 3000
+          # Ready only when the app is healthy and the backend is connected to the database
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          # Restarted soon after the app is broken with the "break the app" button
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
           volumeMounts:
             - name: todo-data
               mountPath: /app/files

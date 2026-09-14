@@ -14,6 +14,87 @@ const IMAGE_PATH = path.join(IMAGE_DIR, "image.jpg");
 const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const TODO_BACKEND_URL = process.env.TODO_BACKEND_URL;
 
+// Set to false by the "break the app" button; the liveness probe then fails and Kubernetes restarts the container
+let isHealthy = true;
+
+const checkBackendReady = () => {
+  return new Promise((resolve) => {
+    const request = http.get(`${TODO_BACKEND_URL}/readyz`, { timeout: 2000 }, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    request.on("timeout", () => request.destroy(new Error("timed out")));
+    request.on("error", (err) => {
+      console.error("Backend readiness check failed:", err.message);
+      resolve(false);
+    });
+  });
+};
+
+// Liveness probe and load balancer health check: fails once the app has been broken
+app.get("/healthz", (req, res) => {
+  if (!isHealthy) {
+    return res.status(500).json({ status: "unhealthy" });
+  }
+  res.json({ status: "ok" });
+});
+
+// Readiness probe: the app is ready when it is healthy and the backend is connected to the database
+app.get("/readyz", async (req, res) => {
+  if (!isHealthy) {
+    return res.status(503).json({ status: "unhealthy" });
+  }
+  if (!(await checkBackendReady())) {
+    return res.status(503).json({ status: "backend not ready" });
+  }
+  res.json({ status: "ok" });
+});
+
+// Once broken, every page shows the failure message until the container is restarted
+app.use((req, res, next) => {
+  if (isHealthy) {
+    return next();
+  }
+  res.status(500).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>System Failure</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+            margin: 0;
+            background: #fff5f5;
+          }
+          .failure {
+            width: 100%;
+            max-width: 640px;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            color: #8b1e1e;
+            background: #ffe5e5;
+            border: 1px solid #e0b4b4;
+            border-radius: 8px;
+          }
+          h1 { font-size: 2rem; margin: 0 0 1rem; }
+          p { font-size: 1.1rem; margin: 0; }
+        </style>
+      </head>
+      <body>
+        <div class="failure">
+          <h1>System Failure</h1>
+          <p>The Todo App is currently unhealthy. Please wait for recovery.</p>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 // Serve cached image file
 app.use(express.static(IMAGE_DIR));
 
@@ -102,9 +183,11 @@ app.post("/todos", async (req, res) => {
   res.redirect("/");
 });
 
-// Load balancer health checks use this path so they do not download images or query the backend
-app.get("/healthz", (req, res) => {
-  res.send("ok");
+// POST /break — make the app unhealthy on purpose
+app.post("/break", (req, res) => {
+  isHealthy = false;
+  console.log("The app was broken on purpose; health checks now fail");
+  res.redirect("/");
 });
 
 app.get("/", async (req, res) => {
@@ -196,6 +279,17 @@ app.get("/", async (req, res) => {
             font-size: 1rem;
           }
           .todo-item:last-child { border-bottom: none; }
+          .break-form { margin-top: 2rem; }
+          #break-btn {
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            background: #e53935;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+          #break-btn:hover { background: #c62828; }
         </style>
       </head>
       <body>
@@ -219,6 +313,10 @@ app.get("/", async (req, res) => {
         <ul class="todo-list">
           ${todoItems}
         </ul>
+
+        <form class="break-form" action="/break" method="POST">
+          <button id="break-btn" type="submit">break the app</button>
+        </form>
 
         <script>
           const input = document.getElementById('todo-input');

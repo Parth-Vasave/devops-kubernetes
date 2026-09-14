@@ -154,3 +154,40 @@ gcloud logging read 'resource.type="k8s_container" AND resource.labels.namespace
 Logs when a new todo is created (the backend logs the received todo, the created todo and the request):
 
 ![Cloud Logging showing the logs of a new todo](images/cloud-logging-new-todo.png)
+
+## Health probes (Exercise 4.2)
+
+Both applications have a readinessProbe and a livenessProbe:
+
+| Container | Readiness (`/readyz`) | Liveness (`/healthz`) |
+| --- | --- | --- |
+| todo-backend | Ready when the database answers `SELECT 1` | Fails only if the server stops answering |
+| todo-app | Ready when the app is healthy and the backend's `/readyz` returns 200 | Fails with 500 once the app has been broken |
+
+The chain means todo-app only receives traffic when it is connected to the database through the backend. The database state is checked only by the readiness probes: if PostgreSQL goes down, the pods become not ready but are not restarted, because a restart would not fix the database. Both apps start their HTTP server right away, retry the database in the background, and survive the database restarting.
+
+The **break the app** button sends `POST /break` to todo-app, which sets `isHealthy = false`. From then on every page shows a failure message and `/healthz` returns 500:
+
+![Todo app with the break the app button](images/break-the-app-button.png)
+
+![System Failure page shown after breaking the app](images/system-failure.png)
+
+The liveness probe checks every 5 seconds and restarts the container after 3 failures. The restarted container starts healthy again. The Gateway's load balancer uses the same `/healthz` path (`todo-app/manifests/healthcheck.yaml`), so it also stops sending traffic to the broken pod.
+
+The apps handle `SIGTERM`. Node runs as PID 1 in the container and ignores the signal by default, so each restart used to wait out the 30-second termination grace period before the container was killed.
+
+Breaking the app on GKE (`kubectl -n project get po` and `GET /` through the Gateway):
+
+```
++1s   todo-app-bd79dfdd7-hnvb8   1/1   Running   restarts=0 | GET / 500   (System Failure page)
++10s  todo-app-bd79dfdd7-hnvb8   1/1   Running   restarts=0 | GET / 503   (load balancer health check failing)
++12s  todo-app-bd79dfdd7-hnvb8   0/1   Running   restarts=0 | GET / 503
++13s  todo-app-bd79dfdd7-hnvb8   0/1   Running   restarts=1 | GET / 503   (liveness probe restarted the container)
++17s  todo-app-bd79dfdd7-hnvb8   1/1   Running   restarts=1 | GET / 503
++23s  todo-app-bd79dfdd7-hnvb8   1/1   Running   restarts=1 | GET / 200   (healthy again)
+```
+
+```
+Warning  Unhealthy  Liveness probe failed: HTTP probe failed with statuscode: 500
+Normal   Killing    Container todo-app failed liveness probe, will be restarted
+```

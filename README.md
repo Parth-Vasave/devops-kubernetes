@@ -108,3 +108,5 @@
 - [5.4.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.4/wikipedia)
 
 - [5.5.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.5/platform-comparison)
+
+- [5.6.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.6/knative)

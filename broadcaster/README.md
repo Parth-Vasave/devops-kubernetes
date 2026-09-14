@@ -28,7 +28,7 @@ Delivery is at most once. A message that fails to send is logged and dropped, wh
 | `NATS_URL` | NATS server, `nats://nats:4222` |
 | `DISCORD_WEBHOOK_URL` | Discord webhook. If it is not set, messages are only logged |
 
-The webhook URL is stored in `manifests/secret.enc.yaml`, encrypted with SOPS. Only the main (`project`) environment gets it, through the KSOPS generator in `project/gitops`, so branch environments run the broadcaster without posting to Discord.
+The webhook URL is stored in `manifests/secret.enc.yaml`, encrypted with SOPS. Only production gets it, through the KSOPS generator in `project/overlays/production`, so staging and branch environments run the broadcaster without posting to Discord; it just logs the messages.
 
 ## Kubernetes
 
@@ -37,7 +37,7 @@ The webhook URL is stored in `manifests/secret.enc.yaml`, encrypted with SOPS. O
 - `nats.yaml`: a single NATS server (`nats:2.14.6`) with a Service, one per environment. Core NATS without JetStream keeps no state, so a Deployment is enough.
 - `deployment.yaml`: the broadcaster with 6 replicas.
 
-Both are included in `project/base/kustomization.yaml`. The main environment is deployed by Argo CD and branch environments by the GitHub Actions workflow.
+Both are included in `project/base/kustomization.yaml`. Staging and production are deployed by Argo CD and branch environments by the GitHub Actions workflow. Staging runs 1 replica.
 
 ## Tests
 

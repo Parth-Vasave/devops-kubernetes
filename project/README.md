@@ -2,15 +2,16 @@
 
 Kustomize entry point for the todo project (Exercise 3.5).
 
-- `base/` combines the manifests of todo-app, todo-backend (with the database backup) and broadcaster and puts everything in the `project` namespace.
-- `gitops/` is the main branch as Argo CD deploys it (Exercise 4.8): the base, the SOPS-encrypted secrets decrypted with KSOPS, and the image tags of the latest release.
+- `base/` combines the manifests of todo-app, todo-backend and broadcaster.
+- `overlays/staging/` and `overlays/production/` are the two environments Argo CD deploys (Exercise 4.9), each in its own namespace. See [Staging and production](#staging-and-production-exercise-49).
+- `argocd/` has their Argo CD Applications.
 
 ## Deploy
 
-The main branch is deployed by Argo CD (see [GitOps](#gitops-exercise-48)). A manual deploy of the base still works:
+Staging and production are deployed by Argo CD. A manual deploy of the base to a namespace of your own still works:
 
 ```bash
-kubectl apply -k project/base
+kubectl apply -k project/base   # namespace "project"
 sops --decrypt todo-backend/manifests/secret.enc.yaml | kubectl apply -f -
 ```
 
@@ -19,31 +20,32 @@ The base does not contain the secrets, so the database secret is applied separat
 On Google Kubernetes Engine the app is exposed through a Gateway:
 
 ```bash
-kubectl -n project get gateway todo-gateway
+kubectl -n production get gateway todo-gateway
+kubectl -n staging get gateway todo-gateway
 ```
 
 ## Database backups (Exercise 3.10)
 
 The `todo-backup` CronJob (`todo-backend/backup`) dumps the database with `pg_dump` every day at 02:00 India time and uploads the dump to the Cloud Storage bucket `devops-kubernetes-508609-todo-backups`. Backups are deleted after 30 days by the bucket's lifecycle rule.
 
-The job gets access to the bucket with Workload Identity, so no key file is needed. The bucket grants `roles/storage.objectCreator` and `roles/storage.objectViewer` to the `todo-backup` Kubernetes service account in the `project` namespace:
+The job gets access to the bucket with Workload Identity, so no key file is needed. The bucket grants `roles/storage.objectCreator` and `roles/storage.objectViewer` to the `todo-backup` Kubernetes service account in the `production` namespace (the `project` namespace before Exercise 4.9):
 
 ```bash
 gcloud container clusters update dwk-cluster --zone=asia-south1-a --workload-pool=devops-kubernetes-508609.svc.id.goog
 gcloud container node-pools update default-pool --cluster=dwk-cluster --zone=asia-south1-a --workload-metadata=GKE_METADATA
 
 gcloud storage buckets create gs://devops-kubernetes-508609-todo-backups --location=asia-south1 --uniform-bucket-level-access --public-access-prevention
-MEMBER="principal://iam.googleapis.com/projects/418821991749/locations/global/workloadIdentityPools/devops-kubernetes-508609.svc.id.goog/subject/ns/project/sa/todo-backup"
+MEMBER="principal://iam.googleapis.com/projects/418821991749/locations/global/workloadIdentityPools/devops-kubernetes-508609.svc.id.goog/subject/ns/production/sa/todo-backup"
 gcloud storage buckets add-iam-policy-binding gs://devops-kubernetes-508609-todo-backups --role=roles/storage.objectCreator --member="$MEMBER"
 gcloud storage buckets add-iam-policy-binding gs://devops-kubernetes-508609-todo-backups --role=roles/storage.objectViewer --member="$MEMBER"
 ```
 
-Only the main environment is backed up; the deploy workflow leaves the CronJob out of branch environments. Run a backup immediately, list backups, or restore one (into an empty database, since the dump creates the tables):
+Only production is backed up: the CronJob is included in `overlays/production` but not in the base, so staging and branch environments do not have it. Run a backup immediately, list backups, or restore one (into an empty database, since the dump creates the tables):
 
 ```bash
-kubectl -n project create job manual-backup --from=cronjob/todo-backup
+kubectl -n production create job manual-backup --from=cronjob/todo-backup
 gcloud storage ls gs://devops-kubernetes-508609-todo-backups/
-gcloud storage cat gs://devops-kubernetes-508609-todo-backups/<backup file> | kubectl -n project exec -i postgres-ss-0 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+gcloud storage cat gs://devops-kubernetes-508609-todo-backups/<backup file> | kubectl -n production exec -i postgres-ss-0 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
 ## DBaaS vs DIY (Exercise 3.9)
@@ -219,6 +221,8 @@ NATS and the broadcaster are part of this kustomization. The Discord webhook sec
 
 ## GitOps (Exercise 4.8)
 
+> Since Exercise 4.9 the single `project/gitops` overlay described here is split into staging and production; see [Staging and production](#staging-and-production-exercise-49). The KSOPS setup is unchanged.
+
 The main branch is deployed with GitOps: Argo CD keeps the `project` namespace in sync with the repository, and committing is all it takes to update the application.
 
 ```
@@ -269,3 +273,45 @@ Committing a change to `todo-app/index.js` (the character counter was stuck to t
 +160s  Argo CD: Synced, Progressing
 +171s  the new todo-app serves the fixed page, then Synced Healthy
 ```
+
+## Staging and production (Exercise 4.9)
+
+The project runs in two environments, each in its own namespace and deployed by its own Argo CD Application:
+
+| | Staging | Production |
+| --- | --- | --- |
+| Namespace | `staging` | `production` |
+| Argo CD Application | `project-staging` (`argocd/staging.yaml`) | `project-production` (`argocd/production.yaml`) |
+| Kustomization | `overlays/staging` | `overlays/production` |
+| Deployed on | every commit to `main` | every git tag |
+| Image tags set by | `.github/workflows/project-release.yaml` | `.github/workflows/project-production.yaml` |
+| Broadcaster | 1 replica, logs messages only (no Discord secret) | 6 replicas, sends to Discord |
+| Database backup | none | daily `todo-backup` CronJob |
+| Todo app | shows a "staging environment" banner | no banner |
+| Address | http://8.233.87.249/ | http://8.232.211.40/ |
+
+```
+commit to main ──▶ Release project to staging: build images (commit SHA), commit tags to overlays/staging ──▶ Argo CD ──▶ staging
+git tag        ──▶ Release project to production: build images from the tagged commit, commit tags to
+                   overlays/production on main ──────────────────────────────────────────────────────▶ Argo CD ──▶ production
+```
+
+Both Applications track `main`; the environments differ in which overlay they build. Argo CD cannot follow "the latest tag" by itself, so the production workflow builds the images from the tagged commit and records their tags in `overlays/production` on `main`. Commits pushed with `GITHUB_TOKEN` do not start workflows, so neither tag commit triggers another release. Changes to the base manifests reach both environments with the next Argo CD sync.
+
+`base/` contains neither the backup CronJob nor any secrets. The overlays add them:
+
+- **Production** includes `todo-backend/backup` and decrypts both the database secret and the Discord webhook secret with KSOPS. The bucket's Workload Identity binding is for the `todo-backup` service account in `production`.
+- **Staging** only decrypts the database secret. Without `DISCORD_WEBHOOK_URL` the broadcaster logs `No Discord webhook configured, message not sent: ...`. It also patches the broadcaster to 1 replica and sets `ENVIRONMENT=staging` for the todo app.
+
+Branch environments (`.github/workflows/project.yaml`) still build `base/` into a namespace named after the branch. The workflow refuses branches named `staging` or `production`, and the delete workflow refuses to delete those namespaces.
+
+### Moving from the project namespace
+
+The previous `project` environment was replaced by `production`. The todos were copied with `pg_dump --data-only --table=todos` from the old database and restored with `psql` into production after its backend had created the table (12 todos, and the ID sequence continues from 12). The old Argo CD Application and namespace were then deleted, and the old namespace's bucket permissions were removed.
+
+### Tests
+
+- **Staging only:** committing the environment banner (`4a466cb`) deployed it to staging, while production kept running `3d1d7b8` without a banner.
+- **Staging broadcaster:** creating a todo in staging logged `No Discord webhook configured, message not sent: A todo was created: Staging broadcaster test`.
+- **Backups:** staging has only the `random-wiki-todo` CronJob, and production also has `todo-backup`. A manual run in production uploaded `backup-2026-09-14-162246.sql` to the bucket.
+- **Production release:** pushing the tag `4.9` runs the production workflow, which builds the images from the tagged commit and commits them to `overlays/production`.

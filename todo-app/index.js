@@ -332,6 +332,12 @@ app.get("/", async (req, res) => {
   `);
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server started in port ${PORT}`);
+});
+
+// Node ignores SIGTERM when it runs as PID 1, so without this Kubernetes waits 30 seconds before killing the container
+process.on("SIGTERM", () => {
+  console.log("Received SIGTERM, shutting down");
+  server.close(() => process.exit(0));
 });

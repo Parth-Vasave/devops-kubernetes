@@ -216,3 +216,56 @@ Todo content is HTML-escaped when the page is rendered, so a todo containing mar
 Todo changes are sent to Discord. todo-backend publishes a message to NATS whenever a todo is created or updated, and the `broadcaster` service (6 replicas in one NATS queue group, so each message is sent once) forwards it to a Discord webhook. See `broadcaster/README.md` for the design and tests.
 
 NATS and the broadcaster are part of this kustomization. The Discord webhook secret (`broadcaster/manifests/secret.enc.yaml`) is only added to the main environment, so branch environments log the messages instead of posting them.
+
+## GitOps (Exercise 4.8)
+
+The main branch is deployed with GitOps: Argo CD keeps the `project` namespace in sync with the repository, and committing is all it takes to update the application.
+
+```
+commit to todo-app/, todo-backend/ or broadcaster/ ──▶ GitHub Actions (Release project): build the 3 images, push them to
+                                                        Artifact Registry, commit the new tags to project/gitops/kustomization.yaml
+                                                                                                    │
+                        project namespace ◀── Argo CD syncs project/gitops from main (KSOPS decrypts the secrets) ◀──┘
+```
+
+1. A push to `main` that changes an application (Markdown files excluded) starts `.github/workflows/project-release.yaml`. It builds todo-app, todo-backend and broadcaster, tags the images with the commit SHA, runs `kustomize edit set image` in `project/gitops` and commits the tags as `github-actions[bot]`. It does not access the cluster. Commits pushed with `GITHUB_TOKEN` do not start workflows, so the tag commit cannot loop.
+2. The Argo CD Application `project` (`argocd-application.yaml`) tracks `project/gitops` on `main` with automated sync, `prune` and `selfHeal`. Changes to manifests only (for example resource limits) are deployed by Argo CD directly, without a new image build.
+3. Other branches still get their own environment from `.github/workflows/project.yaml` (Exercise 3.7), which now builds `project/base` and ignores `main`. The delete workflow removes those environments as before.
+
+### Secrets with KSOPS
+
+The secrets stay SOPS-encrypted in Git. `project/gitops/secret-generator.yaml` is a [KSOPS](https://github.com/viaduct-ai/kustomize-sops) generator that decrypts `todo-backend/manifests/secret.enc.yaml` and `broadcaster/manifests/secret.enc.yaml` while Argo CD builds the kustomization, so the secrets are deployed from Git like everything else and the decrypted values never leave the cluster.
+
+Argo CD needs the KSOPS binary, the age private key and permission to run exec plugins:
+
+```bash
+kubectl -n argocd create secret generic argocd-sops-age-key --from-file=keys.txt=$HOME/.config/sops/age/keys.txt
+kubectl -n argocd patch configmap argocd-cm --type merge -p '{"data":{"kustomize.buildOptions":"--enable-alpha-plugins --enable-exec"}}'
+kubectl -n argocd patch deployment argocd-repo-server --patch-file argocd/ksops-patch.yaml
+kubectl apply -f project/argocd-application.yaml
+```
+
+The `viaductoss/ksops` image has no shell, so the usual init container that copies the binary cannot run. Instead `argocd/ksops-patch.yaml` mounts the image itself as an [image volume](https://kubernetes.io/docs/concepts/storage/volumes/#image) at `/ksops` and adds `/ksops/usr/local/bin` to the repo server's `PATH`.
+
+The overlay can be built locally with the same tools:
+
+```bash
+docker run --rm -v "$PWD":/repo -v ~/.config/sops/age/keys.txt:/keys.txt:ro -e SOPS_AGE_KEY_FILE=/keys.txt -w /repo \
+  viaductoss/ksops:v4.5.1 kustomize build --enable-alpha-plugins --enable-exec project/gitops
+```
+
+### Taking over the running environment
+
+Before the Application was created, `project/gitops` was set to the images already running, and `kubectl diff` of the built overlay against the cluster showed no differences, so Argo CD adopted the existing resources (including the database and its volume) without changes.
+
+### Test
+
+Committing a change to `todo-app/index.js` (the character counter was stuck to the left edge of the page instead of sitting under the input) updated the running application without any `kubectl` commands:
+
+```
++0s    pushed 3d1d7b8 "Align the character counter with the todo input"
++96s   release workflow done, github-actions[bot] committed f2abf02 "Release project 3d1d7b8"
++150s  Argo CD: OutOfSync (f2abf02)
++160s  Argo CD: Synced, Progressing
++171s  the new todo-app serves the fixed page, then Synced Healthy
+```

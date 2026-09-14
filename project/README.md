@@ -127,3 +127,30 @@ Values are based on `kubectl top pods -n project --containers`, measured at idle
 Requests are kept close to idle usage because the e2-medium nodes already have most of their allocatable CPU requested by GKE system pods, and every branch environment needs room for its own copy of the project. Memory limits are about twice the observed peak, so a memory leak is stopped with an OOM kill instead of starving the node. CPU limits sit at the observed peaks, so heavy load is throttled instead of taking CPU from other workloads.
 
 With the limits in place the same load test completed with no restarts or OOM kills (p50 response 0.10 s, p95 0.40 s), and both CronJobs ran successfully.
+
+## Logging (Exercise 3.12)
+
+GKE sends container logs to Cloud Logging, but the cluster was created with only system component logs enabled. Workload logging was turned on so the application logs are collected too:
+
+```bash
+gcloud container clusters update dwk-cluster --zone=asia-south1-a --logging=SYSTEM,WORKLOAD
+```
+
+The logs are found in the Google Cloud console under **Logging > Logs Explorer**, or from **Kubernetes Engine > Workloads**, choosing a deployment and opening its **Logs** tab. This query shows the todo-backend logs of the main environment:
+
+```
+resource.type="k8s_container"
+resource.labels.cluster_name="dwk-cluster"
+resource.labels.namespace_name="project"
+resource.labels.container_name="todo-backend"
+```
+
+The same logs can be read from the command line:
+
+```bash
+gcloud logging read 'resource.type="k8s_container" AND resource.labels.namespace_name="project" AND resource.labels.container_name="todo-backend"' --freshness=1h --format="table(timestamp,textPayload)"
+```
+
+Logs when a new todo is created (the backend logs the received todo, the created todo and the request):
+
+![Cloud Logging showing the logs of a new todo](images/cloud-logging-new-todo.png)

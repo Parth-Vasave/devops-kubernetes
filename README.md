@@ -72,3 +72,5 @@
 - [3.10.](https://github.com/Parth-Vasave/devops-kubernetes/tree/3.10)
 
 - [3.11.](https://github.com/Parth-Vasave/devops-kubernetes/tree/3.11)
+
+- [3.12.](https://github.com/Parth-Vasave/devops-kubernetes/tree/3.12/project)

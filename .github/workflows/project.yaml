@@ -3,17 +3,17 @@ name: Deploy project
 on:
   push:
     branches:
-      - main
-    paths:
-      - "project/**"
-      - "todo-app/**"
-      - "todo-backend/**"
-      - ".github/workflows/project.yaml"
+      - "**"
+
+# Deploys of the same branch run one at a time so they cannot overwrite each other
+concurrency:
+  group: deploy-${{ github.ref_name }}
 
 env:
   GKE_CLUSTER: dwk-cluster
   GKE_ZONE: asia-south1-a
   REGISTRY: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project
+  SOPS_VERSION: v3.13.3
 
 jobs:
   build-publish-deploy:
@@ -26,6 +26,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # main is deployed to the project namespace, every other branch to a namespace named after the branch
+      - name: Choose namespace
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            echo "NAMESPACE=project" >> "$GITHUB_ENV"
+          else
+            echo "NAMESPACE=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          fi
 
       # Workload Identity Federation: GitHub's OIDC token is exchanged for short-lived Google credentials
       - name: Authenticate to Google Cloud
@@ -56,12 +65,26 @@ jobs:
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v3
 
+      - name: Set up SOPS
+        run: |
+          curl -sSfLO "https://github.com/getsops/sops/releases/download/$SOPS_VERSION/sops-$SOPS_VERSION.linux.amd64"
+          curl -sSfLO "https://github.com/getsops/sops/releases/download/$SOPS_VERSION/sops-$SOPS_VERSION.checksums.txt"
+          sha256sum --check --ignore-missing "sops-$SOPS_VERSION.checksums.txt"
+          sudo install -m 0755 "sops-$SOPS_VERSION.linux.amd64" /usr/local/bin/sops
+
       - name: Deploy
         working-directory: project
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
+          # The decrypted secret only exists on the runner; adding it to the kustomization puts it in the target namespace
+          sops --decrypt ../todo-backend/manifests/secret.enc.yaml > secret.yaml
+          kustomize edit add resource secret.yaml
+          kustomize edit set namespace "$NAMESPACE"
           kustomize edit set image \
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \
             "parthvasave/todo-backend=$REGISTRY/todo-backend:$GITHUB_SHA"
           kustomize build . | kubectl apply -f -
-          kubectl -n project rollout status deployment/todo-backend --timeout=300s
-          kubectl -n project rollout status deployment/todo-app --timeout=300s
+          kubectl -n "$NAMESPACE" rollout status deployment/todo-backend --timeout=300s
+          kubectl -n "$NAMESPACE" rollout status deployment/todo-app --timeout=300s
+          kubectl -n "$NAMESPACE" get gateway todo-gateway

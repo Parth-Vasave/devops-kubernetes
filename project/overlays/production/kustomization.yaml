@@ -1,12 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# The main branch as Argo CD deploys it (see ../argocd-application.yaml)
+# Production: deployed by Argo CD from main with the images of the latest git tag (see ../../argocd/production.yaml)
+namespace: production
 resources:
-- ../base
-# Decrypts the SOPS-encrypted secrets with KSOPS inside Argo CD
+  - ../../base
+  # Only production backs up its database to Cloud Storage
+  - ../../../todo-backend/backup
+# Decrypts the database and Discord webhook secrets with KSOPS inside Argo CD
 generators:
-- secret-generator.yaml
-# The release workflow sets the images built from the latest commit
+  - secret-generator.yaml
+# The production release workflow sets the images built for the latest tag
 images:
 - name: parthvasave/broadcaster
   newName: asia-south1-docker.pkg.dev/devops-kubernetes-508609/project/broadcaster

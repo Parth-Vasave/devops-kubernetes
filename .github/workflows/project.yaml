@@ -1,6 +1,6 @@
 name: Deploy branch environment
 
-# main is deployed by Argo CD (see project-release.yaml); every other branch gets its own environment from this workflow
+# main (staging) and tags (production) are deployed by Argo CD; every other branch gets its own environment from this workflow
 on:
   push:
     branches:
@@ -32,8 +32,8 @@ jobs:
       # Each branch is deployed to a namespace named after the branch
       - name: Choose namespace
         run: |
-          if [ "$GITHUB_REF_NAME" = "project" ]; then
-            echo "A branch named project would overwrite the environment Argo CD manages"
+          if [ "$GITHUB_REF_NAME" = "staging" ] || [ "$GITHUB_REF_NAME" = "production" ]; then
+            echo "A branch named $GITHUB_REF_NAME would overwrite an environment Argo CD manages"
             exit 1
           fi
           echo "NAMESPACE=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
@@ -83,8 +83,7 @@ jobs:
           # The decrypted secret only exists on the runner; adding it to the kustomization puts it in the target namespace
           sops --decrypt ../../todo-backend/manifests/secret.enc.yaml > secret.yaml
           kustomize edit add resource secret.yaml
-          # Only the main environment backs up its database and posts to Discord; branch broadcasters just log the messages
-          kustomize edit remove resource ../../todo-backend/backup
+          # The base has no backup and no Discord secret, so branch environments are not backed up and their broadcasters just log
           kustomize edit set namespace "$NAMESPACE"
           kustomize edit set image \
             "parthvasave/todo-app=$REGISTRY/todo-app:$GITHUB_SHA" \

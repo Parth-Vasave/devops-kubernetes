@@ -5,7 +5,6 @@ resources:
   - namespace.yaml
   - ../../todo-app/manifests
   - ../../todo-backend/manifests
-  - ../../todo-backend/backup
   - ../../broadcaster/manifests
 images:
   - name: parthvasave/todo-app

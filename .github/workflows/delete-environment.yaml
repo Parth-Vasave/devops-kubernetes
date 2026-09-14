@@ -38,8 +38,8 @@ jobs:
         env:
           NAMESPACE: ${{ github.event.ref }}
         run: |
-          if [ "$NAMESPACE" = "project" ]; then
-            echo "Refusing to delete the project namespace"
+          if [ "$NAMESPACE" = "staging" ] || [ "$NAMESPACE" = "production" ]; then
+            echo "Refusing to delete the $NAMESPACE namespace"
             exit 1
           fi
           if ! kubectl get namespace "$NAMESPACE" > /dev/null 2>&1; then

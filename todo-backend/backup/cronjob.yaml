@@ -20,6 +20,13 @@ spec:
             # pg_dump must be at least the server's major version, so use the same image as the database
             - name: dump
               image: postgres:17
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 500m
+                  memory: 128Mi
               envFrom:
                 - configMapRef:
                     name: todo-backend-config
@@ -53,6 +60,13 @@ spec:
           containers:
             - name: upload
               image: gcr.io/google.com/cloudsdktool/google-cloud-cli:584.0.0-alpine
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
               env:
                 - name: BUCKET
                   value: devops-kubernetes-508609-todo-backups

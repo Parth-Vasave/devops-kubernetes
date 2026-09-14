@@ -16,6 +16,13 @@ spec:
       containers:
         - name: todo-backend
           image: parthvasave/todo-backend
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
           envFrom:
             - configMapRef:
                 name: todo-backend-config

@@ -15,6 +15,13 @@ spec:
           containers:
             - name: random-wiki-todo
               image: curlimages/curl:8.22.0
+              resources:
+                requests:
+                  cpu: 5m
+                  memory: 8Mi
+                limits:
+                  cpu: 100m
+                  memory: 32Mi
               env:
                 - name: RANDOM_ARTICLE_URL
                   value: "https://en.wikipedia.org/wiki/Special:Random"

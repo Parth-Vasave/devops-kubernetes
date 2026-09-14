@@ -67,8 +67,9 @@ jobs:
 
       - name: Set up SOPS
         run: |
-          curl -sSfLO "https://github.com/getsops/sops/releases/download/$SOPS_VERSION/sops-$SOPS_VERSION.linux.amd64"
-          curl -sSfLO "https://github.com/getsops/sops/releases/download/$SOPS_VERSION/sops-$SOPS_VERSION.checksums.txt"
+          # GitHub release downloads sometimes fail with a 504, so retry them
+          curl -sSfLO --retry 5 --retry-all-errors "https://github.com/getsops/sops/releases/download/$SOPS_VERSION/sops-$SOPS_VERSION.linux.amd64"
+          curl -sSfLO --retry 5 --retry-all-errors "https://github.com/getsops/sops/releases/download/$SOPS_VERSION/sops-$SOPS_VERSION.checksums.txt"
           sha256sum --check --ignore-missing "sops-$SOPS_VERSION.checksums.txt"
           sudo install -m 0755 "sops-$SOPS_VERSION.linux.amd64" /usr/local/bin/sops
 

@@ -191,3 +191,17 @@ Breaking the app on GKE (`kubectl -n project get po` and `GET /` through the Gat
 Warning  Unhealthy  Liveness probe failed: HTTP probe failed with statuscode: 500
 Normal   Killing    Container todo-app failed liveness probe, will be restarted
 ```
+
+## Done todos (Exercise 4.5)
+
+Todos have a `done` field. The **Mark done** button sends `PUT /todos/<id>` with `{ "done": true }` to todo-app, which forwards it to todo-backend's `PUT /todos/:id` (see `todo-backend/README.md`). On startup the backend adds the `done` column to an existing `todos` table, so the production database kept all of its todos.
+
+![Todo app with a todo marked as done](images/todo-done.png)
+
+```
+$ kubectl -n project logs deploy/todo-backend | grep -E "Marked|PUT"
+Marked todo 6 as done: Check the project logs in Cloud Logging
+PUT /todos/6 200 21ms
+```
+
+Todo content is HTML-escaped when the page is rendered, so a todo containing markup is shown as text.

@@ -84,3 +84,5 @@
 - [4.3.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.3/prometheus)
 
 - [4.4.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.4/ping-pong)
+
+- [4.5.](https://github.com/Parth-Vasave/devops-kubernetes/tree/4.5)

@@ -10,8 +10,12 @@ Database connection settings are read from the `PGHOST`, `PGPORT`, `PGUSER`, `PG
 
 A CronJob (`manifests/cronjob.yaml`, Exercise 2.9) creates a `Read <URL>` todo for a random Wikipedia article every hour.
 
-- `GET /todos` — returns the list of all todos as JSON.
+- `GET /todos` — returns the list of all todos as JSON, e.g. `[{ "id": 1, "content": "...", "done": false }]`.
 - `POST /todos` — creates a new todo. Requires a JSON body `{ "content": "..." }`. Content must be ≤ 140 characters.
+- `PUT /todos/:id` — updates whether a todo is done (Exercise 4.5). Requires a JSON body `{ "done": true }` or `{ "done": false }` and returns the updated todo; 400 for an invalid id or body, 404 if the todo does not exist.
+- `GET /healthz` and `GET /readyz` — liveness and readiness probes (Exercise 4.2).
+
+The `done` column is added on startup with `ALTER TABLE todos ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false`, so existing databases are migrated and their todos start as not done.
 
 Every request is logged (method, path, status code, duration), along with each received todo and whether it was created or rejected.
 

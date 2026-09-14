@@ -1,0 +1,8 @@
+{
+  "name": "greeter",
+  "version": "1.0.0",
+  "description": "Responds with a greeting – DevOps with Kubernetes Exercise 5.3.",
+  "main": "index.js",
+  "license": "ISC",
+  "type": "commonjs"
+}

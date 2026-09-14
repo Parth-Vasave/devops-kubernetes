@@ -8,6 +8,8 @@ const PORT = process.env.PORT;
 const logPath = "/shared-data/log.txt";
 const configPath = "/etc/config/information.txt";
 const PING_PONG_URL = process.env.PING_PONG_URL;
+// Optional: when set, the greeting from the greeter service is shown too (Exercise 5.3)
+const GREETER_URL = process.env.GREETER_URL;
 
 const fetchPings = () => {
   return new Promise((resolve) => {
@@ -17,6 +19,21 @@ const fetchPings = () => {
       res.on("end", () => resolve(data.trim()));
     }).on("error", (err) => {
       console.error("Failed to fetch pings:", err.message);
+      resolve("unavailable");
+    });
+  });
+};
+
+const fetchGreeting = () => {
+  return new Promise((resolve) => {
+    const request = http.get(GREETER_URL, { timeout: 2000 }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => resolve(res.statusCode === 200 ? data.trim() : `unavailable (${res.statusCode})`));
+    });
+    request.on("timeout", () => request.destroy(new Error("timed out")));
+    request.on("error", (err) => {
+      console.error("Failed to fetch greeting:", err.message);
       resolve("unavailable");
     });
   });
@@ -50,14 +67,15 @@ app.get("/", async (req, res) => {
     const fileContent = fs.readFileSync(configPath, "utf8").trim();
     const message = process.env.MESSAGE;
 
-    const pings = await fetchPings();
+    const [pings, greeting] = await Promise.all([fetchPings(), GREETER_URL ? fetchGreeting() : null]);
 
     // Plain text keeps the line breaks when the page is opened in a browser
     res.type("text/plain").send(
       `file content: ${fileContent}\n` +
       `env variable: MESSAGE=${message}\n` +
       `${formattedLog}\n` +
-      `Ping / Pongs: ${pings}\n`
+      `Ping / Pongs: ${pings}\n` +
+      (greeting === null ? "" : `greetings: ${greeting}\n`)
     );
   } catch (error) {
     console.error(error);

@@ -1,0 +1,115 @@
+# Two versions of the greeter; both have the app: greeter label and differ by the version label
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeter-v1
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeter
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: greeter
+        version: v1
+    spec:
+      containers:
+        - name: greeter
+          image: parthvasave/greeter:5.3
+          env:
+            - name: VERSION
+              value: "1"
+          ports:
+            - containerPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeter-v2
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeter
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: greeter
+        version: v2
+    spec:
+      containers:
+        - name: greeter
+          image: parthvasave/greeter:5.3
+          env:
+            - name: VERSION
+              value: "2"
+          ports:
+            - containerPort: 3000
+---
+# The service Log output calls; it selects both versions and the HTTPRoute below decides the split
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeter-svc
+  namespace: exercises
+spec:
+  selector:
+    app: greeter
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeter-svc-1
+  namespace: exercises
+spec:
+  selector:
+    app: greeter
+    version: v1
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeter-svc-2
+  namespace: exercises
+spec:
+  selector:
+    app: greeter
+    version: v2
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+---
+# The waypoint sends 75% of the requests to greeter-svc to version 1 and 25% to version 2
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: greeter-split
+  namespace: exercises
+spec:
+  parentRefs:
+    - group: ""
+      kind: Service
+      name: greeter-svc
+      port: 80
+  rules:
+    - backendRefs:
+        - name: greeter-svc-1
+          port: 80
+          weight: 75
+        - name: greeter-svc-2
+          port: 80
+          weight: 25

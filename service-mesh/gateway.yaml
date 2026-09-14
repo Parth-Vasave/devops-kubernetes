@@ -1,0 +1,47 @@
+# Ingress gateway run by Istio; reached with kubectl port-forward svc/log-gateway-istio 8080:80
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: log-gateway
+  namespace: exercises
+  annotations:
+    networking.istio.io/service-type: ClusterIP
+spec:
+  gatewayClassName: istio
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: log-output
+  namespace: exercises
+spec:
+  parentRefs:
+    - name: log-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /pingpong
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: pingpong-svc
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: log-output-svc
+          port: 80

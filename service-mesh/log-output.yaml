@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: exercises
+data:
+  information.txt: |
+    this text is from file
+  MESSAGE: "hello world"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-output
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-output
+  template:
+    metadata:
+      labels:
+        app: log-output
+        version: latest
+    spec:
+      containers:
+        - name: generator
+          image: parthvasave/log-output:5.3
+          command: ["node", "generator.js"]
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared-data
+        - name: log-output
+          image: parthvasave/log-output:5.3
+          env:
+            - name: PORT
+              value: "3000"
+            - name: MESSAGE
+              valueFrom: { configMapKeyRef: { name: log-output-config, key: MESSAGE } }
+            - name: PING_PONG_URL
+              value: http://pingpong-svc/pings
+            - name: GREETER_URL
+              value: http://greeter-svc/
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet: { path: /readyz, port: 3000 }
+            periodSeconds: 5
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared-data
+            - name: config
+              mountPath: /etc/config
+      volumes:
+        - name: shared-data
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: log-output-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-output-svc
+  namespace: exercises
+spec:
+  selector:
+    app: log-output
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

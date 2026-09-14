@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: exercises
+  labels:
+    # All pods in the namespace join the ambient mesh (ztunnel) ...
+    istio.io/dataplane-mode: ambient
+    # ... and their L7 traffic, like the greeter traffic split, goes through the waypoint
+    istio.io/use-waypoint: waypoint

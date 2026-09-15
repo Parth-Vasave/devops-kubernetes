@@ -112,3 +112,5 @@
 - [5.6.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.6/knative)
 
 - [5.7.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.7/serverless)
+
+- [5.8.](https://github.com/Parth-Vasave/devops-kubernetes/tree/5.8/landscape)
